@@ -6,6 +6,7 @@ import type {
   EdgeTypeDef,
   KindStyle,
 } from "./pack-types";
+import { validateWorldPack } from "./pack-validate";
 
 export type PackChangeCallback = () => void;
 
@@ -80,6 +81,11 @@ export class WorldPackStore {
   }
 
   load(pack: WorldPack): void {
+    const result = validateWorldPack(pack);
+    if (!result.valid) {
+      const messages = result.errors.map((e) => `${e.path}: ${e.message}`);
+      throw new Error(`Invalid world pack:\n${messages.join("\n")}`);
+    }
     this.doc.transact(() => {
       // Clear existing
       this.packMap.forEach((_, key) => this.packMap.delete(key));

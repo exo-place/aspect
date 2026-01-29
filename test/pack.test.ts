@@ -257,6 +257,37 @@ describe("WorldPackStore", () => {
     });
   });
 
+  describe("validation on load", () => {
+    test("throws on invalid pack", () => {
+      const { store } = makeStore();
+      expect(() => store.load({} as WorldPack)).toThrow("Invalid world pack");
+    });
+
+    test("succeeds on valid pack", () => {
+      const { store } = makeStore();
+      expect(() => store.load(TEST_PACK)).not.toThrow();
+      expect(store.isLoaded).toBe(true);
+    });
+  });
+
+  describe("JSON round-trip fidelity", () => {
+    test("load → get → JSON.stringify → JSON.parse → load → get preserves data", () => {
+      const { store } = makeStore();
+      store.load(TEST_PACK);
+      const json = JSON.stringify(store.get());
+      const parsed = JSON.parse(json);
+      const { store: store2 } = makeStore();
+      store2.load(parsed);
+      const result = store2.get()!;
+      expect(result.packId).toBe(TEST_PACK.packId);
+      expect(result.packVersion).toBe(TEST_PACK.packVersion);
+      expect(result.name).toBe(TEST_PACK.name);
+      expect(result.description).toBe(TEST_PACK.description);
+      expect(result.kinds).toEqual(TEST_PACK.kinds);
+      expect(result.edgeTypes).toEqual(TEST_PACK.edgeTypes);
+    });
+  });
+
   describe("default pack", () => {
     test("DEFAULT_PACK loads successfully", () => {
       const { store } = makeStore();
