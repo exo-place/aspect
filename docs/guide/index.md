@@ -9,7 +9,7 @@ bun install
 bun run dev
 ```
 
-Open [localhost:3000](http://localhost:3000). You'll see a single card on an infinite canvas.
+Open `localhost:3000`. You'll see a single card on an infinite canvas.
 
 ## Interacting
 
@@ -66,3 +66,9 @@ There is no separate map or index. The structure of the world is the graph of ca
 Aspect is like a MOO, but the primitives are **navigate** and **edit** — not script. You don't program the world. You move through it and reshape it.
 
 See [Philosophy](/philosophy) for the full design rationale.
+
+## What's Next
+
+The current UI is a graph editor — builder mode, where you see and manipulate the raw structure of cards and edges. This is one half of the experience.
+
+The planned [projection layer](/design/projection) will add an experiential mode: the graph rendered as place, with [affordances](/design/affordances) derived from [world pack](/design/world-packs) definitions. See the [architecture overview](/design/architecture) and [roadmap](/design/roadmap) for details.

@@ -22,4 +22,8 @@ features:
     details: Move through the graph along edges. Where you are shapes what you see and who you become.
   - title: Edit
     details: Change what's there. Editing is as fundamental as looking — the world is made by its inhabitants.
+  - title: Projection
+    details: The graph becomes a place. Projection turns structure into lived experience — not a diagram, but somewhere to be.
+  - title: World Packs
+    details: Portable semantic definitions that give the graph meaning. Kinds, edge types, actions, rules — all declarative, all shareable.
 ---

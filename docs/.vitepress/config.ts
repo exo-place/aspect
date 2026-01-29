@@ -9,6 +9,7 @@ export default defineConfig({
     nav: [
       { text: 'Home', link: '/' },
       { text: 'Guide', link: '/guide/' },
+      { text: 'Design', link: '/design/architecture' },
       { text: 'Reference', link: '/reference/' },
       { text: 'exo', link: 'https://exo-place.github.io/' },
     ],
@@ -21,17 +22,22 @@ export default defineConfig({
         ]
       },
       {
+        text: 'Design',
+        items: [
+          { text: 'Philosophy', link: '/philosophy' },
+          { text: 'Architecture', link: '/design/architecture' },
+          { text: 'Projection', link: '/design/projection' },
+          { text: 'Affordances', link: '/design/affordances' },
+          { text: 'World Packs', link: '/design/world-packs' },
+          { text: 'Roadmap', link: '/design/roadmap' },
+        ]
+      },
+      {
         text: 'Reference',
         items: [
           { text: 'Concepts', link: '/reference/' },
         ]
       },
-      {
-        text: 'Design',
-        items: [
-          { text: 'Philosophy', link: '/philosophy' },
-        ]
-      }
     ],
 
     socialLinks: [

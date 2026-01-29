@@ -19,3 +19,7 @@ In most systems, you define who you are upfront: pick a name, fill out a profile
 ## Definitions Over Behavior
 
 What something *is* matters more than what it *does*. A card's text content defines it. Behavior — if any — emerges from the definitions, not from attached scripts or event handlers.
+
+## The World Speaks to You
+
+A MOO makes you speak to the world — learn verb syntax, type commands, parse errors. Aspect inverts this: the world shows you where you are, what's here, and what you can do. Structure becomes interface through [projection](./design/projection.md). Semantics come from portable [world packs](./design/world-packs.md), not hardcoded categories. See [Architecture](./design/architecture.md) for the full conceptual stack.
