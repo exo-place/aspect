@@ -5,6 +5,7 @@ import { Canvas } from "./canvas";
 import { createCardElement, updateCardElement, startEditing } from "./card-node";
 import type { CardNodeEvents } from "./card-node";
 import { createEdgeLine, updateEdgeLine } from "./edge-line";
+import { setupKeybinds } from "./keybinds";
 
 export class App {
   private canvas: Canvas;
@@ -65,21 +66,17 @@ export class App {
           });
         }
       },
+      onClickEmpty: () => {
+        this.navigator.deselect();
+      },
     };
 
     this.graph.onChange = () => this.render();
     this.navigator.onNavigate = () => this.render();
 
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Backspace" || e.key === "Delete") {
-        // Don't delete while editing text
-        if (document.querySelector(".card-editor")) return;
-        const current = this.navigator.current;
-        if (current) {
-          e.preventDefault();
-          this.deleteCard(current.id);
-        }
-      }
+    setupKeybinds({
+      deleteCurrentCard: () => this.deleteCurrentCard(),
+      deselect: () => this.navigator.deselect(),
     });
   }
 
@@ -140,16 +137,23 @@ export class App {
     }
   }
 
+  deleteCurrentCard(): void {
+    const current = this.navigator.current;
+    if (current) this.deleteCard(current.id);
+  }
+
   private deleteCard(cardId: string): void {
     const neighbors = this.graph.neighbors(cardId);
     this.graph.removeCard(cardId);
-    // Navigate to a neighbor, or null if none left
+    // Navigate to a neighbor, or deselect if none left
     if (neighbors.length > 0) {
       this.navigator.jumpTo(neighbors[0].id);
     } else {
       const remaining = this.graph.allCards();
       if (remaining.length > 0) {
         this.navigator.jumpTo(remaining[0].id);
+      } else {
+        this.navigator.deselect();
       }
     }
   }
@@ -157,7 +161,10 @@ export class App {
   bootstrap(): void {
     const cards = this.graph.allCards();
     if (cards.length === 0) {
-      const start = this.graph.addCard("Start here", { x: 0, y: 0 });
+      const start = this.graph.addCard(
+        "Double-click empty space to create a card\nClick a card to select it\nDouble-click a card to edit\nRight-click a card for options\nDrag cards to rearrange\nScroll to zoom",
+        { x: 0, y: 0 },
+      );
       this.navigator.jumpTo(start.id);
       this.canvas.centerOn(0, 0);
     } else {

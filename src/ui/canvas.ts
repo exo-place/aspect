@@ -6,6 +6,7 @@ export interface CanvasState {
 
 export interface CanvasEvents {
   onDoubleClickEmpty(worldX: number, worldY: number): void;
+  onClickEmpty(): void;
 }
 
 const MIN_ZOOM = 0.1;
@@ -76,12 +77,13 @@ export class Canvas {
   private bindEvents(): void {
     this.root.addEventListener("pointerdown", (e) => this.onPointerDown(e));
     this.root.addEventListener("pointermove", (e) => this.onPointerMove(e));
-    this.root.addEventListener("pointerup", () => this.onPointerUp());
+    this.root.addEventListener("pointerup", (e) => this.onPointerUp(e));
     this.root.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
     this.root.addEventListener("dblclick", (e) => this.onDblClick(e));
   }
 
   private onPointerDown(e: PointerEvent): void {
+    if (e.button !== 0) return;
     // Only pan when clicking directly on canvas or world (not on cards)
     const target = e.target as HTMLElement;
     if (target !== this.root && target !== this.world && target !== this.cardLayer) return;
@@ -101,7 +103,14 @@ export class Canvas {
     this.applyTransform();
   }
 
-  private onPointerUp(): void {
+  private onPointerUp(e: PointerEvent): void {
+    if (this.isPanning) {
+      const dx = e.clientX - this.panStartX;
+      const dy = e.clientY - this.panStartY;
+      if (Math.abs(dx) < 3 && Math.abs(dy) < 3) {
+        this.events?.onClickEmpty();
+      }
+    }
     this.isPanning = false;
     this.root.classList.remove("panning");
   }

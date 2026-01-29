@@ -71,7 +71,7 @@ describe("Navigator", () => {
   test("onNavigate fires on jumpTo", () => {
     const { nav, a } = setup();
     let navigated = "";
-    nav.onNavigate = (card) => { navigated = card.id; };
+    nav.onNavigate = (card) => { navigated = card?.id ?? ""; };
     nav.jumpTo(a.id);
     expect(navigated).toBe(a.id);
   });
@@ -80,7 +80,7 @@ describe("Navigator", () => {
     const { nav, a, b } = setup();
     nav.jumpTo(a.id);
     let navigated = "";
-    nav.onNavigate = (card) => { navigated = card.id; };
+    nav.onNavigate = (card) => { navigated = card?.id ?? ""; };
     nav.moveTo(b.id);
     expect(navigated).toBe(b.id);
   });

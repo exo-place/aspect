@@ -15,7 +15,7 @@ Open [localhost:3000](http://localhost:3000). You'll see a single card on an inf
 
 ### Navigate
 
-Click any card to make it the current card. The current card is highlighted with a blue border. Edges connect to other cards — the graph of connections is the world you move through.
+Click any card to select it. The current card is highlighted with a blue border. Click empty space or press Escape to deselect. Edges connect to other cards — the graph of connections is the world you move through.
 
 ### Edit
 
@@ -31,7 +31,15 @@ Drag a card to reposition it on the canvas. Drag empty space to pan. Scroll to z
 
 ### Delete
 
-Press Backspace or Delete to remove the current card (and its edges). You can also right-click a card for a context menu with Delete.
+Press Backspace or Delete to remove the selected card (and its edges). You can also right-click a card for a context menu with Delete.
+
+### Command Palette
+
+Press Ctrl+K (Cmd+K on Mac) to open the command palette. Search and execute any command.
+
+### Keybind Cheatsheet
+
+Hold the Control key to see all available keyboard shortcuts.
 
 ## Persistence
 

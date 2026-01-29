@@ -12,7 +12,9 @@
     "lint": "oxlint",
     "test": "bun test"
   },
-  "dependencies": {},
+  "dependencies": {
+    "keybinds": "github:pterror/keybinds"
+  },
   "devDependencies": {
     "@types/bun": "latest",
     "@typescript/native-preview": "^7.0.0-dev.20260124.1",

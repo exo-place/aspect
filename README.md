@@ -27,11 +27,15 @@ Aspect runs as a local-first web app. Open it in a browser and interact with the
 |---------|--------|
 | Drag empty space | Pan the canvas |
 | Scroll wheel | Zoom at cursor |
-| Click card | Navigate to card |
+| Click card | Select card |
+| Click empty space | Deselect current card |
 | Double-click card | Edit card text inline |
 | Drag card | Reposition card |
 | Double-click empty space | Create new card with edge from current |
-| Backspace / Delete | Delete the current card |
+| Backspace / Delete | Delete the selected card |
+| Escape | Deselect current card |
+| Ctrl/Cmd+K | Open command palette |
+| Hold Control | Show keybind cheatsheet |
 | Right-click card | Context menu (delete) |
 
 All card data is persisted in localStorage. The app works offline as an installable PWA.

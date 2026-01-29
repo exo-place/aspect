@@ -1,7 +1,7 @@
 import type { Card, Edge } from "./types";
 import type { CardGraph } from "./graph";
 
-export type NavigateCallback = (card: Card) => void;
+export type NavigateCallback = (card: Card | null) => void;
 
 export class Navigator {
   private currentId: string | null = null;
@@ -46,5 +46,10 @@ export class Navigator {
     this.currentId = cardId;
     this.onNavigate?.(card);
     return card;
+  }
+
+  deselect(): void {
+    this.currentId = null;
+    this.onNavigate?.(null);
   }
 }
