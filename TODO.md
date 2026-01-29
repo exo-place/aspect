@@ -9,12 +9,12 @@
 
 ## Next
 
-- [ ] IndexedDB storage backend
-- [ ] Undo/redo stack in Editor
+- [x] IndexedDB storage backend
+- [x] Undo/redo stack in Editor
 - [ ] Y.js multiplayer upgrade
 - [x] Edge labels visible in UI
-- [ ] Keyboard navigation (arrow keys follow edges)
-- [ ] Card search / jump-to by text
+- [x] Keyboard navigation (arrow keys follow edges)
+- [x] Card search / jump-to by text
 
 ## Design decisions
 
