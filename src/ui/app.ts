@@ -67,6 +67,14 @@ export class App {
     );
     ensureArrowDefs(this.canvas.edgeLayer);
 
+    this.canvas.edgeLayer.addEventListener("dblclick", (e) => {
+      const target = e.target as Element;
+      if (!target.classList.contains("edge-label")) return;
+      const g = target.closest("g");
+      const edgeId = g?.dataset.edgeId;
+      if (edgeId) this.labelEdgeById(edgeId);
+    });
+
     const { showContextMenu } = setupKeybinds({
       deleteCards: () => this.deleteCards(),
       editCard: (cardId) => this.editCard(cardId),
@@ -289,7 +297,7 @@ export class App {
       activeEdgeIds.add(edge.id);
       let group = this.edgeElements.get(edge.id);
       if (!group) {
-        group = createEdgeGroup();
+        group = createEdgeGroup(edge.id);
         this.canvas.edgeLayer.appendChild(group);
         this.edgeElements.set(edge.id, group);
       }
@@ -464,10 +472,16 @@ export class App {
     const edge = this.graph.edgesFrom(a).find((e) => e.to === b)
       ?? this.graph.edgesFrom(b).find((e) => e.to === a);
     if (!edge) return;
+    this.labelEdgeById(edge.id);
+  }
 
-    // Find midpoint between the two cards
-    const elA = this.cardElements.get(a);
-    const elB = this.cardElements.get(b);
+  private labelEdgeById(edgeId: string): void {
+    const edges = this.graph.allEdges();
+    const edge = edges.find((e) => e.id === edgeId);
+    if (!edge) return;
+
+    const elA = this.cardElements.get(edge.from);
+    const elB = this.cardElements.get(edge.to);
     if (!elA || !elB) return;
     const ax = parseFloat(elA.style.left) + (elA.offsetWidth || 120) / 2;
     const ay = parseFloat(elA.style.top) + (elA.offsetHeight || 40) / 2;

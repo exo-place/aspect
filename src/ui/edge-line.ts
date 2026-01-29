@@ -31,8 +31,9 @@ export function ensureArrowDefs(svg: SVGSVGElement): void {
   svg.insertBefore(defs, svg.firstChild);
 }
 
-export function createEdgeGroup(): SVGGElement {
+export function createEdgeGroup(edgeId?: string): SVGGElement {
   const g = document.createElementNS(SVG_NS, "g");
+  if (edgeId) g.dataset.edgeId = edgeId;
   const path = document.createElementNS(SVG_NS, "path");
   path.classList.add("edge-line");
   const text = document.createElementNS(SVG_NS, "text");
