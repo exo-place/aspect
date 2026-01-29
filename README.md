@@ -2,6 +2,8 @@
 
 Card-based identity exploration sandbox. Like MOOs if the primitives were navigate and edit, not script.
 
+Part of the [exo-place ecosystem](https://exo-place.github.io).
+
 ## Core Concept
 
 Everything is a **card** with **edges**. Cards are atomic units of existence — a place, a trait, a relationship, a state. Edges connect cards into a navigable graph. The world is the sum of its cards and their connections.
@@ -17,6 +19,23 @@ You **navigate** by following edges between cards. You **edit** by changing the 
 | **Navigate** | Move along an edge to another card |
 | **Edit** | Change the content of the current card |
 
+## Using Aspect
+
+Aspect runs as a local-first web app. Open it in a browser and interact with the infinite canvas:
+
+| Gesture | Action |
+|---------|--------|
+| Drag empty space | Pan the canvas |
+| Scroll wheel | Zoom at cursor |
+| Click card | Navigate to card |
+| Double-click card | Edit card text inline |
+| Drag card | Reposition card |
+| Double-click empty space | Create new card with edge from current |
+| Backspace / Delete | Delete the current card |
+| Right-click card | Context menu (delete) |
+
+All card data is persisted in localStorage. The app works offline as an installable PWA.
+
 ## Design Philosophy
 
 - **Navigate and edit over script** — moving and reshaping, not programming
@@ -27,18 +46,17 @@ You **navigate** by following edges between cards. You **edit** by changing the 
 
 ## Architecture
 
-Local-first SPA. All card data lives in the browser. Y.js multiplayer upgrade path for shared worlds.
-
-Bun for local dev server.
+Local-first SPA with vanilla TypeScript. No framework — direct DOM manipulation with in-place reconciliation. Pluggable persistence behind an async `Store` interface (localStorage ships first). Y.js multiplayer upgrade path for shared worlds.
 
 ## Development
 
 ```bash
 bun install          # Install dependencies
-bun run dev          # Development with watch
+bun run dev          # Dev server on localhost:3000
 bun run lint         # oxlint
-bun run check:types  # TypeScript check
+bun run check:types  # TypeScript check (tsgo)
 bun test             # Run tests
+bun run build        # Bundle for production
 ```
 
 ## License
