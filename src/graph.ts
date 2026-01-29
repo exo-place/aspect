@@ -60,6 +60,18 @@ export class CardGraph {
     return this.materializeCard(id, yCard);
   }
 
+  setWidth(id: string, width: number | null): void {
+    const yCard = this.cards.get(id);
+    if (!yCard) throw new Error(`Card not found: ${id}`);
+    this.doc.transact(() => {
+      if (width === null) {
+        yCard.delete("width");
+      } else {
+        yCard.set("width", width);
+      }
+    });
+  }
+
   setKind(id: string, kind: string | null): void {
     const yCard = this.cards.get(id);
     if (!yCard) throw new Error(`Card not found: ${id}`);
@@ -252,6 +264,7 @@ export class CardGraph {
         yCard.set("x", card.position.x);
         yCard.set("y", card.position.y);
         if (card.kind !== undefined) yCard.set("kind", card.kind);
+        if (card.width !== undefined) yCard.set("width", card.width);
         this.cards.set(id, yCard);
       }
       for (const [id, edge] of Object.entries(data.edges)) {
@@ -277,6 +290,10 @@ export class CardGraph {
     const kind = yCard.get("kind") as string | undefined;
     if (kind !== undefined) {
       (card as { kind?: string }).kind = kind;
+    }
+    const width = yCard.get("width") as number | undefined;
+    if (width !== undefined) {
+      (card as { width?: number }).width = width;
     }
     return card;
   }

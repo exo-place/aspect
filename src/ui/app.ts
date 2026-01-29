@@ -138,6 +138,10 @@ export class App {
           });
         }
       },
+      onResize: (cardId, width) => {
+        this.history.capture();
+        this.graph.setWidth(cardId, width < 0 ? null : width);
+      },
       onEdgeDragStart: (sourceCardId) => {
         this.ghostEdgeSource = sourceCardId;
         const line = document.createElementNS("http://www.w3.org/2000/svg", "line");

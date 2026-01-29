@@ -144,6 +144,23 @@ html, body {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
 }
 
+.card-resize-handle {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 6px;
+  height: 100%;
+  cursor: ew-resize;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.card:hover .card-resize-handle {
+  opacity: 1;
+  background: rgba(124, 156, 255, 0.3);
+  border-radius: 0 6px 6px 0;
+}
+
 .context-menu {
   position: fixed;
   z-index: 100;

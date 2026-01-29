@@ -61,6 +61,9 @@ export function validateSnapshot(input: unknown): SnapshotValidationResult {
       if (typeof card.text !== "string") {
         errors.push({ path: `graph.cards.${id}.text`, message: "Must be a string" });
       }
+      if (card.width !== undefined && typeof card.width !== "number") {
+        errors.push({ path: `graph.cards.${id}.width`, message: "Must be a number" });
+      }
       if (typeof card.position !== "object" || card.position === null) {
         errors.push({ path: `graph.cards.${id}.position`, message: "Must be an object" });
       } else {
@@ -128,6 +131,9 @@ export function validateSnapshot(input: unknown): SnapshotValidationResult {
     };
     if (typeof raw.kind === "string") {
       (card as { kind?: string }).kind = raw.kind;
+    }
+    if (typeof raw.width === "number") {
+      (card as { width?: number }).width = raw.width;
     }
     cards[id] = card;
   }

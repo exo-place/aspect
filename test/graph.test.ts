@@ -79,6 +79,31 @@ describe("CardGraph", () => {
       expect(g.allCards()).toHaveLength(3);
     });
 
+    test("setWidth stores width on card", () => {
+      const { g, a } = makeGraph();
+      g.setWidth(a.id, 200);
+      expect(g.getCard(a.id)!.width).toBe(200);
+    });
+
+    test("setWidth(null) clears width", () => {
+      const { g, a } = makeGraph();
+      g.setWidth(a.id, 200);
+      g.setWidth(a.id, null);
+      expect(g.getCard(a.id)!.width).toBeUndefined();
+    });
+
+    test("toJSON/loadJSON round-trips width", () => {
+      const { g, a } = makeGraph();
+      g.setWidth(a.id, 250);
+      const json = g.toJSON();
+      expect(json.cards[a.id].width).toBe(250);
+
+      const bundle2 = createYDoc();
+      const g2 = new CardGraph(bundle2);
+      g2.loadJSON(json);
+      expect(g2.getCard(a.id)!.width).toBe(250);
+    });
+
     test("removeCards deletes multiple cards and their edges atomically", () => {
       const { g, a, b, c } = makeGraph();
       g.addEdge(a.id, b.id);

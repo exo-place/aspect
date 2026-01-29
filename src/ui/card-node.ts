@@ -11,6 +11,7 @@ export interface CardNodeEvents {
   onEdgeDragStart?(sourceCardId: string): void;
   onEdgeDragMove?(sourceCardId: string, screenX: number, screenY: number): void;
   onEdgeDragEnd?(sourceCardId: string, screenX: number, screenY: number): void;
+  onResize?(cardId: string, width: number): void;
 }
 
 export function createCardElement(
@@ -111,6 +112,44 @@ export function createCardElement(
     events.onContextMenu(cardId, e.clientX, e.clientY);
   });
 
+  // Resize handle
+  const handle = document.createElement("div");
+  handle.className = "card-resize-handle";
+  el.appendChild(handle);
+
+  let isResizing = false;
+  let resizeStartX = 0;
+  let resizeOriginWidth = 0;
+
+  handle.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
+    e.stopPropagation();
+    isResizing = true;
+    resizeStartX = e.clientX;
+    resizeOriginWidth = el.offsetWidth;
+    handle.setPointerCapture(e.pointerId);
+  });
+
+  handle.addEventListener("pointermove", (e) => {
+    if (!isResizing) return;
+    const zoom = getZoom();
+    const dx = (e.clientX - resizeStartX) / zoom;
+    const newWidth = Math.max(120, resizeOriginWidth + dx);
+    el.style.width = `${newWidth}px`;
+    events.onDrag(cardId, parseFloat(el.style.left), parseFloat(el.style.top));
+  });
+
+  handle.addEventListener("pointerup", () => {
+    if (!isResizing) return;
+    isResizing = false;
+    events.onResize?.(cardId, el.offsetWidth);
+  });
+
+  handle.addEventListener("dblclick", (e) => {
+    e.stopPropagation();
+    events.onResize?.(cardId, -1);
+  });
+
   return el;
 }
 
@@ -124,6 +163,12 @@ export function updateCardElement(
   if (!el.classList.contains("dragging")) {
     el.style.left = `${card.position.x}px`;
     el.style.top = `${card.position.y}px`;
+  }
+
+  if (card.width != null) {
+    el.style.width = `${card.width}px`;
+  } else {
+    el.style.width = "max-content";
   }
 
   // Update text content (preserve editor if open)

@@ -8,6 +8,7 @@ export interface Card {
   text: string;
   position: Position;
   kind?: string;
+  width?: number;
 }
 
 export interface Edge {
