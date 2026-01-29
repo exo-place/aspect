@@ -63,6 +63,25 @@ export class CardGraph {
     this.notify();
   }
 
+  edgeBetween(a: string, b: string): Edge | undefined {
+    for (const edge of this.edges.values()) {
+      if ((edge.from === a && edge.to === b) || (edge.from === b && edge.to === a)) {
+        return edge;
+      }
+    }
+    return undefined;
+  }
+
+  allEdgesBetween(a: string, b: string): Edge[] {
+    const result: Edge[] = [];
+    for (const edge of this.edges.values()) {
+      if ((edge.from === a && edge.to === b) || (edge.from === b && edge.to === a)) {
+        result.push(edge);
+      }
+    }
+    return result;
+  }
+
   edgesFrom(cardId: string): Edge[] {
     const result: Edge[] = [];
     for (const edge of this.edges.values()) {

@@ -136,6 +136,49 @@ describe("CardGraph", () => {
       g.addEdge(b.id, c.id);
       expect(g.allEdges()).toHaveLength(2);
     });
+
+    test("edgeBetween finds forward edge", () => {
+      const { g, a, b } = makeGraph();
+      const edge = g.addEdge(a.id, b.id);
+      expect(g.edgeBetween(a.id, b.id)).toBe(edge);
+    });
+
+    test("edgeBetween finds reverse edge", () => {
+      const { g, a, b } = makeGraph();
+      const edge = g.addEdge(b.id, a.id);
+      expect(g.edgeBetween(a.id, b.id)).toBe(edge);
+    });
+
+    test("edgeBetween returns undefined when no edge", () => {
+      const { g, a, b } = makeGraph();
+      expect(g.edgeBetween(a.id, b.id)).toBeUndefined();
+    });
+
+    test("allEdgesBetween returns edges in both directions", () => {
+      const { g, a, b } = makeGraph();
+      g.addEdge(a.id, b.id);
+      g.addEdge(b.id, a.id);
+      expect(g.allEdgesBetween(a.id, b.id)).toHaveLength(2);
+    });
+
+    test("allEdgesBetween returns empty array when no edges", () => {
+      const { g, a, b } = makeGraph();
+      expect(g.allEdgesBetween(a.id, b.id)).toHaveLength(0);
+    });
+
+    test("updateEdge sets label", () => {
+      const { g, a, b } = makeGraph();
+      const edge = g.addEdge(a.id, b.id);
+      g.updateEdge(edge.id, "hello");
+      expect(g.allEdges()[0].label).toBe("hello");
+    });
+
+    test("updateEdge clears label with empty string", () => {
+      const { g, a, b } = makeGraph();
+      const edge = g.addEdge(a.id, b.id, "hello");
+      g.updateEdge(edge.id, "");
+      expect(g.allEdges()[0].label).toBeUndefined();
+    });
   });
 
   describe("serialization", () => {

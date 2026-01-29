@@ -2,6 +2,7 @@ import { CardGraph } from "../graph";
 import { Navigator } from "../navigator";
 import { Editor } from "../editor";
 import { Selection } from "../selection";
+import { resolveEdgeToggle } from "../edge-toggle";
 import { Canvas } from "./canvas";
 import { createCardElement, updateCardElement, startEditing } from "./card-node";
 import type { CardNodeEvents } from "./card-node";
@@ -32,6 +33,7 @@ export class App {
       editCard: (cardId) => this.editCard(cardId),
       createCard: (worldX, worldY) => this.createCard(worldX, worldY),
       linkCards: () => this.linkCards(),
+      unlinkCards: () => this.unlinkCards(),
       labelEdge: () => this.labelEdge(),
       deselect: () => {
         this.selection.clear();
@@ -121,14 +123,34 @@ export class App {
         }
         this.ghostEdgeSource = null;
 
+        // Collect targets: all selected cards (except source) + drop target
+        const targets = new Set(
+          this.selection.toArray().filter((id) => id !== sourceCardId),
+        );
         const hitEl = document.elementsFromPoint(screenX, screenY)
           .find((el) => el instanceof HTMLElement && el.dataset.cardId && el.dataset.cardId !== sourceCardId);
         if (hitEl instanceof HTMLElement && hitEl.dataset.cardId) {
-          const targetId = hitEl.dataset.cardId;
-          // Skip if edge already exists
-          const existing = this.graph.edgesFrom(sourceCardId).find((e) => e.to === targetId);
-          if (!existing) {
-            this.graph.addEdge(sourceCardId, targetId);
+          targets.add(hitEl.dataset.cardId);
+        }
+        if (targets.size === 0) return;
+
+        const targetArr = [...targets];
+        const action = resolveEdgeToggle(
+          sourceCardId, targetArr,
+          (a, b) => !!this.graph.edgeBetween(a, b),
+        );
+
+        if (action === "link") {
+          for (const targetId of targetArr) {
+            if (!this.graph.edgeBetween(sourceCardId, targetId)) {
+              this.graph.addEdge(sourceCardId, targetId);
+            }
+          }
+        } else {
+          for (const targetId of targetArr) {
+            for (const edge of this.graph.allEdgesBetween(sourceCardId, targetId)) {
+              this.graph.removeEdge(edge.id);
+            }
           }
         }
       },
@@ -249,10 +271,25 @@ export class App {
     const selected = this.selection.toArray().filter((id) => id !== currentId);
     if (selected.length === 0) return;
     for (const targetId of selected) {
-      const existing = this.graph.edgesFrom(currentId).find((e) => e.to === targetId);
-      if (!existing) {
+      if (!this.graph.edgeBetween(currentId, targetId)) {
         this.graph.addEdge(currentId, targetId);
       }
+    }
+  }
+
+  private unlinkCards(): void {
+    const selected = this.selection.toArray();
+    if (selected.length < 2) return;
+    const toRemove: string[] = [];
+    for (let i = 0; i < selected.length; i++) {
+      for (let j = i + 1; j < selected.length; j++) {
+        for (const edge of this.graph.allEdgesBetween(selected[i], selected[j])) {
+          toRemove.push(edge.id);
+        }
+      }
+    }
+    for (const id of toRemove) {
+      this.graph.removeEdge(id);
     }
   }
 

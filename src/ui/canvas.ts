@@ -26,7 +26,7 @@ export class Canvas {
   private panStartY = 0;
   private panOriginX = 0;
   private panOriginY = 0;
-  private clickTimer: ReturnType<typeof setTimeout> | null = null;
+  private clickTimer: number | null = null;
 
   events: CanvasEvents | null = null;
 
@@ -111,10 +111,10 @@ export class Canvas {
       const dx = e.clientX - this.panStartX;
       const dy = e.clientY - this.panStartY;
       if (Math.abs(dx) < 3 && Math.abs(dy) < 3) {
-        this.clickTimer = setTimeout(() => {
+        this.clickTimer = requestAnimationFrame(() => {
           this.clickTimer = null;
           this.events?.onClickEmpty();
-        }, 250);
+        });
       }
     }
     this.isPanning = false;
@@ -141,7 +141,7 @@ export class Canvas {
 
   private onDblClick(e: MouseEvent): void {
     if (this.clickTimer !== null) {
-      clearTimeout(this.clickTimer);
+      cancelAnimationFrame(this.clickTimer);
       this.clickTimer = null;
     }
     const target = e.target as HTMLElement;

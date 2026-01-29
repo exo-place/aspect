@@ -12,6 +12,7 @@ export interface KeybindHandlers {
   editCard(cardId: string): void;
   createCard(worldX: number, worldY: number): void;
   linkCards(): void;
+  unlinkCards(): void;
   labelEdge(): void;
   deselect(): void;
   getCurrentCardId(): string | null;
@@ -38,6 +39,11 @@ const schema = defineSchema({
     label: "Link cards",
     category: "Edit",
     keys: ["$mod+L"],
+  },
+  "unlink-cards": {
+    label: "Unlink cards",
+    category: "Edit",
+    keys: ["$mod+Shift+L"],
   },
   "label-edge": {
     label: "Label edge",
@@ -82,6 +88,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
         }
       },
       "link-cards": () => handlers.linkCards(),
+      "unlink-cards": () => handlers.unlinkCards(),
       "label-edge": () => handlers.labelEdge(),
       deselect: () => handlers.deselect(),
       "command-palette": () => {
@@ -97,6 +104,9 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
         when: (ctx) => ctx.cardId != null && !ctx.isEditing,
       },
       "link-cards": {
+        when: (ctx) => (ctx.selectedCount as number) >= 2 && !ctx.isEditing,
+      },
+      "unlink-cards": {
         when: (ctx) => (ctx.selectedCount as number) >= 2 && !ctx.isEditing,
       },
       "label-edge": {
@@ -117,6 +127,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
     "delete-card": "card",
     "create-card": "canvas",
     "link-cards": "card",
+    "unlink-cards": "card",
     "label-edge": "card",
   };
   for (const cmd of commands) {

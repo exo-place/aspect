@@ -23,6 +23,7 @@ export function createCardElement(
 
   let isDragging = false;
   let isEdgeDragging = false;
+  let shiftPending = false;
   let dragStartX = 0;
   let dragStartY = 0;
   let cardOriginX = 0;
@@ -36,8 +37,8 @@ export function createCardElement(
     el.setPointerCapture(e.pointerId);
 
     if (e.shiftKey && events.onEdgeDragStart) {
-      isEdgeDragging = true;
-      events.onEdgeDragStart(cardId);
+      // Defer edge-drag until actual movement so shift+click works for multi-select
+      shiftPending = true;
     } else {
       isDragging = true;
       cardOriginX = parseFloat(el.style.left);
@@ -49,6 +50,17 @@ export function createCardElement(
   });
 
   el.addEventListener("pointermove", (e) => {
+    if (shiftPending) {
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      if (Math.abs(dx) >= 3 || Math.abs(dy) >= 3) {
+        shiftPending = false;
+        isEdgeDragging = true;
+        events.onEdgeDragStart!(cardId);
+        events.onEdgeDragMove?.(cardId, e.clientX, e.clientY);
+      }
+      return;
+    }
     if (isEdgeDragging) {
       events.onEdgeDragMove?.(cardId, e.clientX, e.clientY);
       return;
@@ -63,6 +75,12 @@ export function createCardElement(
   });
 
   el.addEventListener("pointerup", (e) => {
+    if (shiftPending) {
+      // Shift+click with no drag — treat as click for multi-select
+      shiftPending = false;
+      events.onClick(cardId, e);
+      return;
+    }
     if (isEdgeDragging) {
       isEdgeDragging = false;
       events.onEdgeDragEnd?.(cardId, e.clientX, e.clientY);
