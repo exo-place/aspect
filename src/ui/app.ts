@@ -22,6 +22,15 @@ export class App {
     this.editor = new Editor(graph);
     this.canvas = new Canvas(container);
 
+    const { showContextMenu } = setupKeybinds({
+      deleteCard: (cardId) => this.deleteCard(cardId),
+      editCard: (cardId) => this.editCard(cardId),
+      createCard: (worldX, worldY) => this.createCard(worldX, worldY),
+      deselect: () => this.navigator.deselect(),
+      getCurrentCardId: () => this.navigator.current?.id ?? null,
+      getViewportCenter: () => this.canvas.getViewportCenter(),
+    });
+
     this.cardEvents = {
       onClick: (cardId) => {
         this.navigator.jumpTo(cardId);
@@ -33,8 +42,9 @@ export class App {
           this.editor.setText(cardId, text);
         });
       },
-      onDelete: (cardId) => {
-        this.deleteCard(cardId);
+      onContextMenu: (cardId, screenX, screenY) => {
+        this.navigator.jumpTo(cardId);
+        showContextMenu("card", screenX, screenY, { cardId });
       },
       onDragStart: () => {},
       onDrag: () => {
@@ -53,31 +63,18 @@ export class App {
 
     this.canvas.events = {
       onDoubleClickEmpty: (worldX, worldY) => {
-        const card = this.graph.addCard("", { x: worldX - 60, y: worldY - 20 });
-        const current = this.navigator.current;
-        if (current) {
-          this.graph.addEdge(current.id, card.id);
-        }
-        this.navigator.jumpTo(card.id);
-        const cardEl = this.cardElements.get(card.id);
-        if (cardEl) {
-          startEditing(cardEl, "", (text) => {
-            this.editor.setText(card.id, text);
-          });
-        }
+        this.createCard(worldX, worldY);
       },
       onClickEmpty: () => {
         this.navigator.deselect();
+      },
+      onContextMenu: (screenX, screenY, worldX, worldY) => {
+        showContextMenu("canvas", screenX, screenY, { worldX, worldY });
       },
     };
 
     this.graph.onChange = () => this.render();
     this.navigator.onNavigate = () => this.render();
-
-    setupKeybinds({
-      deleteCurrentCard: () => this.deleteCurrentCard(),
-      deselect: () => this.navigator.deselect(),
-    });
   }
 
   get nav(): Navigator {
@@ -137,9 +134,28 @@ export class App {
     }
   }
 
-  deleteCurrentCard(): void {
+  private editCard(cardId: string): void {
+    const card = this.graph.getCard(cardId);
+    const cardEl = this.cardElements.get(cardId);
+    if (!card || !cardEl) return;
+    startEditing(cardEl, card.text, (text) => {
+      this.editor.setText(cardId, text);
+    });
+  }
+
+  private createCard(worldX: number, worldY: number): void {
+    const card = this.graph.addCard("", { x: worldX - 60, y: worldY - 20 });
     const current = this.navigator.current;
-    if (current) this.deleteCard(current.id);
+    if (current) {
+      this.graph.addEdge(current.id, card.id);
+    }
+    this.navigator.jumpTo(card.id);
+    const cardEl = this.cardElements.get(card.id);
+    if (cardEl) {
+      startEditing(cardEl, "", (text) => {
+        this.editor.setText(card.id, text);
+      });
+    }
   }
 
   private deleteCard(cardId: string): void {

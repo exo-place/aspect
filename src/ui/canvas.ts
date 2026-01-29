@@ -7,6 +7,7 @@ export interface CanvasState {
 export interface CanvasEvents {
   onDoubleClickEmpty(worldX: number, worldY: number): void;
   onClickEmpty(): void;
+  onContextMenu(screenX: number, screenY: number, worldX: number, worldY: number): void;
 }
 
 const MIN_ZOOM = 0.1;
@@ -80,6 +81,7 @@ export class Canvas {
     this.root.addEventListener("pointerup", (e) => this.onPointerUp(e));
     this.root.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
     this.root.addEventListener("dblclick", (e) => this.onDblClick(e));
+    this.root.addEventListener("contextmenu", (e) => this.onContextMenuEvent(e));
   }
 
   private onPointerDown(e: PointerEvent): void {
@@ -138,5 +140,18 @@ export class Canvas {
     if (target !== this.root && target !== this.world && target !== this.cardLayer) return;
     const world = this.screenToWorld(e.clientX, e.clientY);
     this.events?.onDoubleClickEmpty(world.x, world.y);
+  }
+
+  private onContextMenuEvent(e: MouseEvent): void {
+    const target = e.target as HTMLElement;
+    if (target !== this.root && target !== this.world && target !== this.cardLayer) return;
+    e.preventDefault();
+    const world = this.screenToWorld(e.clientX, e.clientY);
+    this.events?.onContextMenu(e.clientX, e.clientY, world.x, world.y);
+  }
+
+  getViewportCenter(): { x: number; y: number } {
+    const rect = this.root.getBoundingClientRect();
+    return this.screenToWorld(rect.left + rect.width / 2, rect.top + rect.height / 2);
   }
 }

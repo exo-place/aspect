@@ -3,7 +3,7 @@ import type { Card } from "../types";
 export interface CardNodeEvents {
   onClick(cardId: string): void;
   onDoubleClick(cardId: string, element: HTMLDivElement): void;
-  onDelete(cardId: string): void;
+  onContextMenu(cardId: string, screenX: number, screenY: number): void;
   onDragStart(cardId: string): void;
   onDrag(cardId: string, worldX: number, worldY: number): void;
   onDragEnd(cardId: string): void;
@@ -69,7 +69,7 @@ export function createCardElement(
   el.addEventListener("contextmenu", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    showCardMenu(e.clientX, e.clientY, () => events.onDelete(cardId));
+    events.onContextMenu(cardId, e.clientX, e.clientY);
   });
 
   return el;
@@ -128,33 +128,3 @@ export function startEditing(
   });
 }
 
-function showCardMenu(x: number, y: number, onDelete: () => void): void {
-  const existing = document.querySelector(".card-menu");
-  if (existing) existing.remove();
-
-  const menu = document.createElement("div");
-  menu.className = "card-menu";
-  menu.style.left = `${x}px`;
-  menu.style.top = `${y}px`;
-
-  const del = document.createElement("button");
-  del.className = "card-menu-item delete";
-  del.textContent = "Delete";
-  del.addEventListener("click", () => {
-    menu.remove();
-    onDelete();
-  });
-  menu.appendChild(del);
-
-  document.body.appendChild(menu);
-
-  const dismiss = (e: Event) => {
-    if (!menu.contains(e.target as Node)) {
-      menu.remove();
-      document.removeEventListener("pointerdown", dismiss);
-    }
-  };
-  requestAnimationFrame(() => {
-    document.addEventListener("pointerdown", dismiss);
-  });
-}

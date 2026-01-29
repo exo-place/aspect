@@ -5,6 +5,7 @@ declare module "keybinds" {
     category?: string;
     keys?: string[];
     mouse?: string[];
+    menu?: string | string[];
     when?: (ctx: Record<string, unknown>) => boolean;
     execute: (ctx: Record<string, unknown>, event?: Event) => unknown;
     hidden?: boolean;
@@ -16,6 +17,7 @@ declare module "keybinds" {
     category?: string;
     keys?: string[];
     mouse?: string[];
+    menu?: string | string[];
     hidden?: boolean;
   }
 
@@ -46,6 +48,14 @@ declare module "keybinds" {
       onExecute?: (cmd: Command, ctx: Record<string, unknown>) => void;
     },
   ): () => void;
+
+  export function executeCommand(
+    commands: Command[],
+    id: string,
+    context?: Record<string, unknown>,
+  ): boolean;
+
+  export function formatKeyParts(key: string): string[];
 
   export function registerComponents(): void;
 }
