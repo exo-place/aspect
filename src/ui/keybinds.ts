@@ -21,6 +21,10 @@ export interface KeybindHandlers {
   undo(): void;
   redo(): void;
   navigateDirection(direction: "up" | "down" | "left" | "right"): void;
+  exportGraph(): void;
+  importGraph(): void;
+  exportPack(): void;
+  importPack(): void;
   getCurrentCardId(): string | null;
   getSelectedCount(): number;
   getViewportCenter(): { x: number; y: number };
@@ -100,6 +104,24 @@ const schema = defineSchema({
     category: "Navigation",
     keys: ["Escape"],
   },
+  "export-graph": {
+    label: "Export graph",
+    category: "File",
+    keys: ["$mod+Shift+E"],
+  },
+  "import-graph": {
+    label: "Import graph",
+    category: "File",
+    keys: ["$mod+Shift+I"],
+  },
+  "export-pack": {
+    label: "Export world pack",
+    category: "File",
+  },
+  "import-pack": {
+    label: "Import world pack",
+    category: "File",
+  },
   "command-palette": {
     label: "Command palette",
     category: "General",
@@ -152,6 +174,10 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       "nav-right": () => handlers.navigateDirection("right"),
       search: () => handlers.search(),
       deselect: () => handlers.deselect(),
+      "export-graph": () => handlers.exportGraph(),
+      "import-graph": () => handlers.importGraph(),
+      "export-pack": () => handlers.exportPack(),
+      "import-pack": () => handlers.importPack(),
       "command-palette": () => {
         const el = document.querySelector("command-palette");
         if (el) (el as HTMLElement & { open: boolean }).open = !((el as HTMLElement & { open: boolean }).open);
@@ -204,6 +230,18 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       deselect: {
         when: (ctx) => !ctx.isEditing,
       },
+      "export-graph": {
+        when: (ctx) => !ctx.isEditing,
+      },
+      "import-graph": {
+        when: (ctx) => !ctx.isEditing,
+      },
+      "export-pack": {
+        when: (ctx) => !ctx.isEditing,
+      },
+      "import-pack": {
+        when: (ctx) => !ctx.isEditing,
+      },
       "command-palette": {
         captureInput: true,
       },
@@ -222,6 +260,10 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
     "link-cards": "card",
     "unlink-cards": "card",
     "label-edge": "card",
+    "export-graph": "canvas",
+    "import-graph": "canvas",
+    "export-pack": "canvas",
+    "import-pack": "canvas",
   };
   for (const cmd of commands) {
     const menu = menuTags[cmd.id];

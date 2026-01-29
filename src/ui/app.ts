@@ -17,6 +17,9 @@ import { setupKeybinds } from "./keybinds";
 import { SearchOverlay } from "./search";
 import { showKindPicker } from "./kind-picker";
 import type { YDocBundle } from "../ydoc";
+import { downloadJSON, uploadJSON } from "../file-io";
+import { exportSnapshot, validateSnapshot, importSnapshotReplace } from "../snapshot";
+import { validateWorldPack } from "../pack-validate";
 
 export class App {
   private canvas: Canvas;
@@ -76,6 +79,10 @@ export class App {
       redo: () => this.history.redo(),
       navigateDirection: (dir) => this.navigateDirection(dir),
       search: () => this.search.open(),
+      exportGraph: () => this.exportGraph(),
+      importGraph: () => this.importGraph(),
+      exportPack: () => this.exportPack(),
+      importPack: () => this.importPack(),
       deselect: () => {
         this.selection.clear();
         this.navigator.deselect();
@@ -487,6 +494,56 @@ export class App {
         e.preventDefault();
         cancel();
       }
+    });
+  }
+
+  private exportGraph(): void {
+    const snapshot = exportSnapshot(this.graph, this.packStore);
+    const packName = this.packStore.get()?.name ?? "aspect";
+    const filename = `${packName.toLowerCase().replace(/\s+/g, "-")}-export.json`;
+    downloadJSON(snapshot, filename);
+  }
+
+  private importGraph(): void {
+    uploadJSON().then((data) => {
+      const result = validateSnapshot(data);
+      if (!result.valid) {
+        const messages = result.errors.map((e) => `${e.path}: ${e.message}`);
+        alert(`Invalid snapshot:\n${messages.join("\n")}`);
+        return;
+      }
+      importSnapshotReplace(result.snapshot, this.graph, this.packStore);
+      const cards = this.graph.allCards();
+      if (cards.length > 0) {
+        this.navigator.jumpTo(cards[0].id);
+        this.canvas.centerOn(cards[0].position.x, cards[0].position.y);
+      }
+    }).catch(() => {
+      // User cancelled file picker or read error
+    });
+  }
+
+  private exportPack(): void {
+    const pack = this.packStore.get();
+    if (!pack) {
+      alert("No world pack loaded");
+      return;
+    }
+    const filename = `${pack.name.toLowerCase().replace(/\s+/g, "-")}-pack.json`;
+    downloadJSON(pack, filename);
+  }
+
+  private importPack(): void {
+    uploadJSON().then((data) => {
+      const result = validateWorldPack(data);
+      if (!result.valid) {
+        const messages = result.errors.map((e) => `${e.path}: ${e.message}`);
+        alert(`Invalid world pack:\n${messages.join("\n")}`);
+        return;
+      }
+      this.packStore.load(result.pack);
+    }).catch(() => {
+      // User cancelled file picker or read error
     });
   }
 
