@@ -18,6 +18,7 @@ export interface KeybindHandlers {
   deselect(): void;
   undo(): void;
   redo(): void;
+  navigateDirection(direction: "up" | "down" | "left" | "right"): void;
   getCurrentCardId(): string | null;
   getSelectedCount(): number;
   getViewportCenter(): { x: number; y: number };
@@ -61,6 +62,26 @@ const schema = defineSchema({
     label: "Redo",
     category: "Edit",
     keys: ["$mod+Shift+Z"],
+  },
+  "nav-up": {
+    label: "Navigate up",
+    category: "Navigation",
+    keys: ["ArrowUp"],
+  },
+  "nav-down": {
+    label: "Navigate down",
+    category: "Navigation",
+    keys: ["ArrowDown"],
+  },
+  "nav-left": {
+    label: "Navigate left",
+    category: "Navigation",
+    keys: ["ArrowLeft"],
+  },
+  "nav-right": {
+    label: "Navigate right",
+    category: "Navigation",
+    keys: ["ArrowRight"],
   },
   deselect: {
     label: "Deselect",
@@ -112,6 +133,10 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       "label-edge": () => handlers.labelEdge(),
       undo: () => handlers.undo(),
       redo: () => handlers.redo(),
+      "nav-up": () => handlers.navigateDirection("up"),
+      "nav-down": () => handlers.navigateDirection("down"),
+      "nav-left": () => handlers.navigateDirection("left"),
+      "nav-right": () => handlers.navigateDirection("right"),
       deselect: () => handlers.deselect(),
       "command-palette": () => {
         const el = document.querySelector("command-palette");
@@ -143,6 +168,18 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       },
       redo: {
         when: (ctx) => !ctx.isEditing,
+      },
+      "nav-up": {
+        when: (ctx) => ctx.cardId != null && !ctx.isEditing,
+      },
+      "nav-down": {
+        when: (ctx) => ctx.cardId != null && !ctx.isEditing,
+      },
+      "nav-left": {
+        when: (ctx) => ctx.cardId != null && !ctx.isEditing,
+      },
+      "nav-right": {
+        when: (ctx) => ctx.cardId != null && !ctx.isEditing,
       },
       deselect: {
         when: (ctx) => !ctx.isEditing,

@@ -41,6 +41,7 @@ export class App {
       labelEdge: () => this.labelEdge(),
       undo: () => this.history.undo(),
       redo: () => this.history.redo(),
+      navigateDirection: (dir) => this.navigateDirection(dir),
       deselect: () => {
         this.selection.clear();
         this.navigator.deselect();
@@ -285,6 +286,56 @@ export class App {
       this.navigator.jumpTo(neighbors[0].id);
     } else {
       this.navigator.deselect();
+    }
+  }
+
+  private navigateDirection(direction: "up" | "down" | "left" | "right"): void {
+    const current = this.navigator.current;
+    if (!current) return;
+
+    const neighbors = this.graph.neighbors(current.id);
+    if (neighbors.length === 0) return;
+
+    // Target angles: right=0, down=π/2, left=π, up=-π/2
+    const targetAngle: Record<string, number> = {
+      right: 0,
+      down: Math.PI / 2,
+      left: Math.PI,
+      up: -Math.PI / 2,
+    };
+    const angle = targetAngle[direction];
+    const cone = Math.PI / 4; // ±45° cone
+
+    const cx = current.position.x;
+    const cy = current.position.y;
+
+    let best: { id: string; dist: number } | null = null;
+
+    for (const neighbor of neighbors) {
+      const dx = neighbor.position.x - cx;
+      const dy = neighbor.position.y - cy;
+      const neighborAngle = Math.atan2(dy, dx);
+
+      // Angular difference, normalized to [-π, π]
+      let diff = neighborAngle - angle;
+      if (diff > Math.PI) diff -= 2 * Math.PI;
+      if (diff < -Math.PI) diff += 2 * Math.PI;
+
+      if (Math.abs(diff) > cone) continue;
+
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (!best || dist < best.dist) {
+        best = { id: neighbor.id, dist };
+      }
+    }
+
+    if (best) {
+      this.navigator.jumpTo(best.id);
+      this.selection.set(best.id);
+      this.canvas.centerOn(
+        this.graph.getCard(best.id)!.position.x,
+        this.graph.getCard(best.id)!.position.y,
+      );
     }
   }
 
