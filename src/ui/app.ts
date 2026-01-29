@@ -2,6 +2,7 @@ import { CardGraph } from "../graph";
 import { Navigator } from "../navigator";
 import { Editor } from "../editor";
 import { Selection } from "../selection";
+import { History } from "../history";
 import { resolveEdgeToggle } from "../edge-toggle";
 import { Canvas } from "./canvas";
 import { createCardElement, updateCardElement, startEditing } from "./card-node";
@@ -15,6 +16,7 @@ export class App {
   private navigator: Navigator;
   private editor: Editor;
   private selection: Selection;
+  private history: History;
   private cardElements = new Map<string, HTMLDivElement>();
   private edgeElements = new Map<string, SVGGElement>();
   private cardEvents: CardNodeEvents;
@@ -26,6 +28,7 @@ export class App {
     this.navigator = new Navigator(graph);
     this.editor = new Editor(graph);
     this.selection = new Selection();
+    this.history = new History(graph);
     this.canvas = new Canvas(container);
     ensureArrowDefs(this.canvas.edgeLayer);
 
@@ -36,6 +39,8 @@ export class App {
       linkCards: () => this.linkCards(),
       unlinkCards: () => this.unlinkCards(),
       labelEdge: () => this.labelEdge(),
+      undo: () => this.history.undo(),
+      redo: () => this.history.redo(),
       deselect: () => {
         this.selection.clear();
         this.navigator.deselect();
@@ -61,6 +66,7 @@ export class App {
         const card = this.graph.getCard(cardId);
         if (!card) return;
         startEditing(element, card.text, (text) => {
+          this.history.capture();
           this.editor.setText(cardId, text);
         });
       },
@@ -75,6 +81,7 @@ export class App {
       onDragEnd: (cardId) => {
         const el = this.cardElements.get(cardId);
         if (el) {
+          this.history.capture();
           this.editor.setPosition(cardId, {
             x: parseFloat(el.style.left),
             y: parseFloat(el.style.top),
@@ -142,6 +149,7 @@ export class App {
           (a, b) => !!this.graph.directEdge(a, b),
         );
 
+        this.history.capture();
         if (action === "link") {
           for (const targetId of targetArr) {
             this.graph.addEdge(sourceCardId, targetId);
@@ -248,11 +256,13 @@ export class App {
     const cardEl = this.cardElements.get(cardId);
     if (!card || !cardEl) return;
     startEditing(cardEl, card.text, (text) => {
+      this.history.capture();
       this.editor.setText(cardId, text);
     });
   }
 
   private createCard(worldX: number, worldY: number): void {
+    this.history.capture();
     const card = this.graph.addCard("", { x: worldX - 60, y: worldY - 20 });
     const current = this.navigator.current;
     if (current) {
@@ -268,6 +278,7 @@ export class App {
   }
 
   private deleteCard(cardId: string): void {
+    this.history.capture();
     const neighbors = this.graph.neighbors(cardId);
     this.graph.removeCard(cardId);
     if (neighbors.length > 0) {
@@ -282,6 +293,7 @@ export class App {
     if (!currentId) return;
     const selected = this.selection.toArray().filter((id) => id !== currentId);
     if (selected.length === 0) return;
+    this.history.capture();
     for (const targetId of selected) {
       this.graph.addEdge(currentId, targetId);
     }
@@ -290,6 +302,7 @@ export class App {
   private unlinkCards(): void {
     const selected = this.selection.toArray();
     if (selected.length < 2) return;
+    this.history.capture();
     const toRemove: string[] = [];
     for (let i = 0; i < selected.length; i++) {
       for (let j = i + 1; j < selected.length; j++) {
@@ -338,6 +351,7 @@ export class App {
       committed = true;
       const value = input.value.trim();
       input.remove();
+      this.history.capture();
       this.graph.updateEdge(edge.id, value);
     };
     const cancel = () => {

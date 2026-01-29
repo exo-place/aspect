@@ -16,6 +16,8 @@ export interface KeybindHandlers {
   unlinkCards(): void;
   labelEdge(): void;
   deselect(): void;
+  undo(): void;
+  redo(): void;
   getCurrentCardId(): string | null;
   getSelectedCount(): number;
   getViewportCenter(): { x: number; y: number };
@@ -49,6 +51,16 @@ const schema = defineSchema({
   "label-edge": {
     label: "Label edge",
     category: "Edit",
+  },
+  undo: {
+    label: "Undo",
+    category: "Edit",
+    keys: ["$mod+Z"],
+  },
+  redo: {
+    label: "Redo",
+    category: "Edit",
+    keys: ["$mod+Shift+Z"],
   },
   deselect: {
     label: "Deselect",
@@ -98,6 +110,8 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       "link-cards": () => handlers.linkCards(),
       "unlink-cards": () => handlers.unlinkCards(),
       "label-edge": () => handlers.labelEdge(),
+      undo: () => handlers.undo(),
+      redo: () => handlers.redo(),
       deselect: () => handlers.deselect(),
       "command-palette": () => {
         const el = document.querySelector("command-palette");
@@ -123,6 +137,12 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       },
       "label-edge": {
         when: (ctx) => (ctx.selectedCount as number) === 2 && !ctx.isEditing,
+      },
+      undo: {
+        when: (ctx) => !ctx.isEditing,
+      },
+      redo: {
+        when: (ctx) => !ctx.isEditing,
       },
       deselect: {
         when: (ctx) => !ctx.isEditing,
