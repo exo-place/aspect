@@ -5,8 +5,9 @@
   "module": "src/index.ts",
   "type": "module",
   "scripts": {
-    "dev": "bun run --watch src/index.ts",
-    "start": "bun run src/index.ts",
+    "dev": "bun run --watch server.ts",
+    "start": "bun run server.ts",
+    "build": "bun build src/index.ts --outdir dist --target browser",
     "check:types": "tsgo --noEmit",
     "lint": "oxlint",
     "test": "bun test"

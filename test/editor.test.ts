@@ -46,7 +46,7 @@ describe("Editor", () => {
 
   test("onEdit fires on setText", () => {
     const { editor, card } = setup();
-    let edited: string | null = null;
+    let edited = "";
     editor.onEdit = (c) => { edited = c.id; };
     editor.setText(card.id, "new");
     expect(edited).toBe(card.id);
@@ -54,7 +54,7 @@ describe("Editor", () => {
 
   test("onEdit fires on setPosition", () => {
     const { editor, card } = setup();
-    let edited: string | null = null;
+    let edited = "";
     editor.onEdit = (c) => { edited = c.id; };
     editor.setPosition(card.id, { x: 0, y: 0 });
     expect(edited).toBe(card.id);
