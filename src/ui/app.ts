@@ -11,6 +11,7 @@ export class App {
   private graph: CardGraph;
   private navigator: Navigator;
   private editor: Editor;
+  private suppressRender = false;
 
   constructor(container: HTMLElement, graph: CardGraph) {
     this.graph = graph;
@@ -40,8 +41,12 @@ export class App {
       },
     };
 
-    this.graph.onChange = () => this.render();
-    this.navigator.onNavigate = () => this.render();
+    this.graph.onChange = () => {
+      if (!this.suppressRender) this.render();
+    };
+    this.navigator.onNavigate = () => {
+      if (!this.suppressRender) this.render();
+    };
 
     this.render();
   }
@@ -84,25 +89,30 @@ export class App {
           this.render();
         });
       },
-      onDragStart: () => {},
-      onDrag: (cardId, worldX, worldY) => {
-        this.editor.setPosition(cardId, { x: worldX, y: worldY });
-        // Update edge positions without full re-render
+      onDragStart: () => {
+        this.suppressRender = true;
+      },
+      onDrag: (_cardId, worldX, worldY) => {
+        // Update edges visually without committing to graph
         edgeLayer.innerHTML = "";
-        const updated: Record<string, typeof allCards[0]> = {};
-        for (const c of this.graph.allCards()) updated[c.id] = c;
+        const tempMap: Record<string, typeof allCards[0]> = {};
+        for (const c of this.graph.allCards()) {
+          tempMap[c.id] = c.id === _cardId
+            ? { ...c, position: { x: worldX, y: worldY } }
+            : c;
+        }
         for (const edge of allEdges) {
-          renderEdge(edge, updated, this.navigator.current?.id ?? null, edgeLayer);
+          renderEdge(edge, tempMap, currentId, edgeLayer);
         }
       },
       onDragEnd: (cardId) => {
         const el = cardLayer.querySelector(`[data-card-id="${cardId}"]`) as HTMLElement | null;
+        this.suppressRender = false;
         if (el) {
           const x = parseFloat(el.style.left);
           const y = parseFloat(el.style.top);
           this.editor.setPosition(cardId, { x, y });
         }
-        this.render();
       },
     };
 

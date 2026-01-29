@@ -29,6 +29,7 @@ export function renderCard(
   let dragStartY = 0;
   let cardOriginX = card.position.x;
   let cardOriginY = card.position.y;
+  let clickTimer: ReturnType<typeof setTimeout> | null = null;
 
   el.addEventListener("pointerdown", (e) => {
     e.stopPropagation();
@@ -60,7 +61,11 @@ export function renderCard(
     const dx = (e.clientX - dragStartX) / zoom;
     const dy = (e.clientY - dragStartY) / zoom;
     if (Math.abs(dx) < 3 && Math.abs(dy) < 3) {
-      events.onClick(card.id);
+      // Delay click so dblclick can cancel it
+      clickTimer = setTimeout(() => {
+        clickTimer = null;
+        events.onClick(card.id);
+      }, 200);
     } else {
       events.onDragEnd(card.id);
     }
@@ -68,6 +73,10 @@ export function renderCard(
 
   el.addEventListener("dblclick", (e) => {
     e.stopPropagation();
+    if (clickTimer !== null) {
+      clearTimeout(clickTimer);
+      clickTimer = null;
+    }
     events.onDoubleClick(card.id, el);
   });
 
