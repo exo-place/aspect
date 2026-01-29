@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { CardGraph } from "../src/graph";
 import { Editor } from "../src/editor";
+import { createYDoc } from "../src/ydoc";
 
 describe("Editor", () => {
   function setup() {
-    const graph = new CardGraph();
+    const bundle = createYDoc();
+    const graph = new CardGraph(bundle);
     const card = graph.addCard("Original", { x: 10, y: 20 });
     const editor = new Editor(graph);
     return { graph, editor, card };

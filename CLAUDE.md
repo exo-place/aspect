@@ -10,7 +10,7 @@ Part of the [exo-place ecosystem](https://exo-place.github.io).
 
 ## Tech Stack
 
-- **App**: SPA (local-first, Y.js multiplayer upgrade path)
+- **App**: SPA (local-first, Y.js CRDT multiplayer via y-websocket)
 - **Dev server**: Bun
 - **Language**: TypeScript (strict)
 - **Linting**: oxlint
@@ -25,6 +25,10 @@ Part of the [exo-place ecosystem](https://exo-place.github.io).
 - **Edge** — directional connection between two cards
 - **Navigate** — move to a connected card along an edge
 - **Edit** — modify the content of the current card
+
+### Multiplayer
+
+Y.js CRDTs are the source of truth for all card/edge state. `CardGraph` wraps `Y.Map` collections from a shared `Y.Doc`. Persistence uses `y-indexeddb`; real-time sync uses `y-websocket` with a Bun WebSocket server at `/ws/:room`. Undo/redo is per-client via `Y.UndoManager`.
 
 ### Design Principles
 

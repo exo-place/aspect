@@ -41,9 +41,11 @@ Press Ctrl+K (Cmd+K on Mac) to open the command palette. Search and execute any 
 
 Hold the Control key to see all available keyboard shortcuts.
 
-## Persistence
+## Persistence & Multiplayer
 
-All data is saved to localStorage automatically. Refresh the page and your cards are still there. Aspect also works offline as an installable PWA.
+All data is saved locally via IndexedDB (Y.js CRDT). Refresh the page and your cards are still there. Aspect works offline as an installable PWA.
+
+To share a world, open `/room/<name>` — anyone with the same URL syncs in real time. Undo/redo works independently per client.
 
 ## Core Concepts
 

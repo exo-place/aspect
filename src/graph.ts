@@ -1,43 +1,68 @@
+import * as Y from "yjs";
 import type { Card, CardGraphData, Edge, Position } from "./types";
+import type { YDocBundle } from "./ydoc";
 import { createId } from "./id";
 
 export type ChangeCallback = () => void;
 
 export class CardGraph {
-  private cards: Map<string, Card> = new Map();
-  private edges: Map<string, Edge> = new Map();
+  private doc: Y.Doc;
+  private cards: Y.Map<Y.Map<unknown>>;
+  private edges: Y.Map<Y.Map<unknown>>;
 
   onChange: ChangeCallback | null = null;
 
+  constructor(bundle: YDocBundle) {
+    this.doc = bundle.doc;
+    this.cards = bundle.cards;
+    this.edges = bundle.edges;
+
+    this.doc.on("update", () => {
+      this.notify();
+    });
+  }
+
   addCard(text: string, position: Position): Card {
-    const card: Card = { id: createId(), text, position: { ...position } };
-    this.cards.set(card.id, card);
-    this.notify();
-    return card;
+    const id = createId();
+    this.doc.transact(() => {
+      const yCard = new Y.Map<unknown>();
+      yCard.set("text", text);
+      yCard.set("x", position.x);
+      yCard.set("y", position.y);
+      this.cards.set(id, yCard);
+    });
+    return this.materializeCard(id, this.cards.get(id)!);
   }
 
   getCard(id: string): Card | undefined {
-    return this.cards.get(id);
+    const yCard = this.cards.get(id);
+    if (!yCard) return undefined;
+    return this.materializeCard(id, yCard);
   }
 
   updateCard(id: string, patch: Partial<Pick<Card, "text" | "position">>): Card {
-    const card = this.cards.get(id);
-    if (!card) throw new Error(`Card not found: ${id}`);
-    if (patch.text !== undefined) card.text = patch.text;
-    if (patch.position !== undefined) card.position = { ...patch.position };
-    this.notify();
-    return card;
+    const yCard = this.cards.get(id);
+    if (!yCard) throw new Error(`Card not found: ${id}`);
+    this.doc.transact(() => {
+      if (patch.text !== undefined) yCard.set("text", patch.text);
+      if (patch.position !== undefined) {
+        yCard.set("x", patch.position.x);
+        yCard.set("y", patch.position.y);
+      }
+    });
+    return this.materializeCard(id, yCard);
   }
 
   removeCard(id: string): void {
     if (!this.cards.has(id)) throw new Error(`Card not found: ${id}`);
-    for (const [edgeId, edge] of this.edges) {
-      if (edge.from === id || edge.to === id) {
-        this.edges.delete(edgeId);
+    this.doc.transact(() => {
+      for (const [edgeId, yEdge] of this.edges) {
+        if (yEdge.get("from") === id || yEdge.get("to") === id) {
+          this.edges.delete(edgeId);
+        }
       }
-    }
-    this.cards.delete(id);
-    this.notify();
+      this.cards.delete(id);
+    });
   }
 
   addEdge(from: string, to: string, label?: string): Edge {
@@ -45,37 +70,52 @@ export class CardGraph {
     if (!this.cards.has(to)) throw new Error(`Card not found: ${to}`);
     const existing = this.directEdge(from, to);
     if (existing) return existing;
-    const edge: Edge = { id: createId(), from, to, label };
-    this.edges.set(edge.id, edge);
-    this.notify();
-    return edge;
+    const id = createId();
+    this.doc.transact(() => {
+      const yEdge = new Y.Map<unknown>();
+      yEdge.set("from", from);
+      yEdge.set("to", to);
+      if (label !== undefined) yEdge.set("label", label);
+      this.edges.set(id, yEdge);
+    });
+    return this.materializeEdge(id, this.edges.get(id)!);
   }
 
   updateEdge(id: string, label: string): Edge {
-    const edge = this.edges.get(id);
-    if (!edge) throw new Error(`Edge not found: ${id}`);
-    edge.label = label || undefined;
-    this.notify();
-    return edge;
+    const yEdge = this.edges.get(id);
+    if (!yEdge) throw new Error(`Edge not found: ${id}`);
+    this.doc.transact(() => {
+      if (label) {
+        yEdge.set("label", label);
+      } else {
+        yEdge.delete("label");
+      }
+    });
+    return this.materializeEdge(id, yEdge);
   }
 
   removeEdge(id: string): void {
     if (!this.edges.has(id)) throw new Error(`Edge not found: ${id}`);
-    this.edges.delete(id);
-    this.notify();
+    this.doc.transact(() => {
+      this.edges.delete(id);
+    });
   }
 
   directEdge(from: string, to: string): Edge | undefined {
-    for (const edge of this.edges.values()) {
-      if (edge.from === from && edge.to === to) return edge;
+    for (const [id, yEdge] of this.edges) {
+      if (yEdge.get("from") === from && yEdge.get("to") === to) {
+        return this.materializeEdge(id, yEdge);
+      }
     }
     return undefined;
   }
 
   edgeBetween(a: string, b: string): Edge | undefined {
-    for (const edge of this.edges.values()) {
-      if ((edge.from === a && edge.to === b) || (edge.from === b && edge.to === a)) {
-        return edge;
+    for (const [id, yEdge] of this.edges) {
+      const f = yEdge.get("from");
+      const t = yEdge.get("to");
+      if ((f === a && t === b) || (f === b && t === a)) {
+        return this.materializeEdge(id, yEdge);
       }
     }
     return undefined;
@@ -83,9 +123,11 @@ export class CardGraph {
 
   allEdgesBetween(a: string, b: string): Edge[] {
     const result: Edge[] = [];
-    for (const edge of this.edges.values()) {
-      if ((edge.from === a && edge.to === b) || (edge.from === b && edge.to === a)) {
-        result.push(edge);
+    for (const [id, yEdge] of this.edges) {
+      const f = yEdge.get("from");
+      const t = yEdge.get("to");
+      if ((f === a && t === b) || (f === b && t === a)) {
+        result.push(this.materializeEdge(id, yEdge));
       }
     }
     return result;
@@ -93,64 +135,111 @@ export class CardGraph {
 
   edgesFrom(cardId: string): Edge[] {
     const result: Edge[] = [];
-    for (const edge of this.edges.values()) {
-      if (edge.from === cardId) result.push(edge);
+    for (const [id, yEdge] of this.edges) {
+      if (yEdge.get("from") === cardId) {
+        result.push(this.materializeEdge(id, yEdge));
+      }
     }
     return result;
   }
 
   edgesTo(cardId: string): Edge[] {
     const result: Edge[] = [];
-    for (const edge of this.edges.values()) {
-      if (edge.to === cardId) result.push(edge);
+    for (const [id, yEdge] of this.edges) {
+      if (yEdge.get("to") === cardId) {
+        result.push(this.materializeEdge(id, yEdge));
+      }
     }
     return result;
   }
 
   neighbors(cardId: string): Card[] {
     const neighborIds = new Set<string>();
-    for (const edge of this.edges.values()) {
-      if (edge.from === cardId) neighborIds.add(edge.to);
-      if (edge.to === cardId) neighborIds.add(edge.from);
+    for (const [, yEdge] of this.edges) {
+      const f = yEdge.get("from") as string;
+      const t = yEdge.get("to") as string;
+      if (f === cardId) neighborIds.add(t);
+      if (t === cardId) neighborIds.add(f);
     }
     const result: Card[] = [];
     for (const id of neighborIds) {
-      const card = this.cards.get(id);
-      if (card) result.push(card);
+      const yCard = this.cards.get(id);
+      if (yCard) result.push(this.materializeCard(id, yCard));
     }
     return result;
   }
 
   allCards(): Card[] {
-    return [...this.cards.values()];
+    const result: Card[] = [];
+    for (const [id, yCard] of this.cards) {
+      result.push(this.materializeCard(id, yCard));
+    }
+    return result;
   }
 
   allEdges(): Edge[] {
-    return [...this.edges.values()];
+    const result: Edge[] = [];
+    for (const [id, yEdge] of this.edges) {
+      result.push(this.materializeEdge(id, yEdge));
+    }
+    return result;
   }
 
   toJSON(): CardGraphData {
     const cards: Record<string, Card> = {};
-    for (const [id, card] of this.cards) {
-      cards[id] = { ...card, position: { ...card.position } };
+    for (const [id, yCard] of this.cards) {
+      cards[id] = this.materializeCard(id, yCard);
     }
     const edges: Record<string, Edge> = {};
-    for (const [id, edge] of this.edges) {
-      edges[id] = { ...edge };
+    for (const [id, yEdge] of this.edges) {
+      edges[id] = this.materializeEdge(id, yEdge);
     }
     return { cards, edges };
   }
 
   loadJSON(data: CardGraphData): void {
-    this.cards.clear();
-    this.edges.clear();
-    for (const [id, card] of Object.entries(data.cards)) {
-      this.cards.set(id, { ...card, position: { ...card.position } });
+    this.doc.transact(() => {
+      this.cards.forEach((_, id) => this.cards.delete(id));
+      this.edges.forEach((_, id) => this.edges.delete(id));
+      for (const [id, card] of Object.entries(data.cards)) {
+        const yCard = new Y.Map<unknown>();
+        yCard.set("text", card.text);
+        yCard.set("x", card.position.x);
+        yCard.set("y", card.position.y);
+        this.cards.set(id, yCard);
+      }
+      for (const [id, edge] of Object.entries(data.edges)) {
+        const yEdge = new Y.Map<unknown>();
+        yEdge.set("from", edge.from);
+        yEdge.set("to", edge.to);
+        if (edge.label !== undefined) yEdge.set("label", edge.label);
+        this.edges.set(id, yEdge);
+      }
+    });
+  }
+
+  private materializeCard(id: string, yCard: Y.Map<unknown>): Card {
+    return {
+      id,
+      text: yCard.get("text") as string,
+      position: {
+        x: yCard.get("x") as number,
+        y: yCard.get("y") as number,
+      },
+    };
+  }
+
+  private materializeEdge(id: string, yEdge: Y.Map<unknown>): Edge {
+    const label = yEdge.get("label") as string | undefined;
+    const edge: Edge = {
+      id,
+      from: yEdge.get("from") as string,
+      to: yEdge.get("to") as string,
+    };
+    if (label !== undefined) {
+      (edge as { label?: string }).label = label;
     }
-    for (const [id, edge] of Object.entries(data.edges)) {
-      this.edges.set(id, { ...edge });
-    }
-    this.notify();
+    return edge;
   }
 
   private notify(): void {

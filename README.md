@@ -38,7 +38,7 @@ Aspect runs as a local-first web app. Open it in a browser and interact with the
 | Hold Control | Show keybind cheatsheet |
 | Right-click card | Context menu (delete) |
 
-All card data is persisted in localStorage. The app works offline as an installable PWA.
+All card data is persisted locally via IndexedDB (Y.js CRDT). Open `/room/<name>` for real-time multiplayer. The app works offline as an installable PWA.
 
 ## Design Philosophy
 
@@ -50,7 +50,7 @@ All card data is persisted in localStorage. The app works offline as an installa
 
 ## Architecture
 
-Local-first SPA with vanilla TypeScript. No framework — direct DOM manipulation with in-place reconciliation. Pluggable persistence behind an async `Store` interface (localStorage ships first). Y.js multiplayer upgrade path for shared worlds.
+Local-first SPA with vanilla TypeScript. No framework — direct DOM manipulation with in-place reconciliation. Y.js CRDTs are the source of truth, persisted via `y-indexeddb` and synced in real-time via `y-websocket`. Open `/room/<name>` to share a world with others.
 
 ## Development
 

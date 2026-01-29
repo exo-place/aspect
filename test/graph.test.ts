@@ -1,9 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { CardGraph } from "../src/graph";
+import { createYDoc } from "../src/ydoc";
 
 describe("CardGraph", () => {
   function makeGraph() {
-    const g = new CardGraph();
+    const bundle = createYDoc();
+    const g = new CardGraph(bundle);
     const a = g.addCard("Alpha", { x: 0, y: 0 });
     const b = g.addCard("Beta", { x: 100, y: 0 });
     const c = g.addCard("Gamma", { x: 200, y: 0 });
@@ -12,7 +14,8 @@ describe("CardGraph", () => {
 
   describe("cards", () => {
     test("addCard creates a card with id, text, and position", () => {
-      const g = new CardGraph();
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
       const card = g.addCard("hello", { x: 10, y: 20 });
       expect(card.id).toBeString();
       expect(card.text).toBe("hello");
@@ -20,13 +23,15 @@ describe("CardGraph", () => {
     });
 
     test("getCard retrieves a card by id", () => {
-      const g = new CardGraph();
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
       const card = g.addCard("hello", { x: 0, y: 0 });
-      expect(g.getCard(card.id)).toBe(card);
+      expect(g.getCard(card.id)).toEqual(card);
     });
 
     test("getCard returns undefined for unknown id", () => {
-      const g = new CardGraph();
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
       expect(g.getCard("nope")).toBeUndefined();
     });
 
@@ -43,7 +48,8 @@ describe("CardGraph", () => {
     });
 
     test("updateCard throws for unknown id", () => {
-      const g = new CardGraph();
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
       expect(() => g.updateCard("nope", { text: "x" })).toThrow("Card not found");
     });
 
@@ -54,7 +60,8 @@ describe("CardGraph", () => {
     });
 
     test("removeCard throws for unknown id", () => {
-      const g = new CardGraph();
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
       expect(() => g.removeCard("nope")).toThrow("Card not found");
     });
 
@@ -98,7 +105,8 @@ describe("CardGraph", () => {
     });
 
     test("removeEdge throws for unknown id", () => {
-      const g = new CardGraph();
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
       expect(() => g.removeEdge("nope")).toThrow("Edge not found");
     });
 
@@ -140,13 +148,13 @@ describe("CardGraph", () => {
     test("edgeBetween finds forward edge", () => {
       const { g, a, b } = makeGraph();
       const edge = g.addEdge(a.id, b.id);
-      expect(g.edgeBetween(a.id, b.id)).toBe(edge);
+      expect(g.edgeBetween(a.id, b.id)).toEqual(edge);
     });
 
     test("edgeBetween finds reverse edge", () => {
       const { g, a, b } = makeGraph();
       const edge = g.addEdge(b.id, a.id);
-      expect(g.edgeBetween(a.id, b.id)).toBe(edge);
+      expect(g.edgeBetween(a.id, b.id)).toEqual(edge);
     });
 
     test("edgeBetween returns undefined when no edge", () => {
@@ -169,7 +177,7 @@ describe("CardGraph", () => {
     test("directEdge finds forward edge only", () => {
       const { g, a, b } = makeGraph();
       const edge = g.addEdge(a.id, b.id);
-      expect(g.directEdge(a.id, b.id)).toBe(edge);
+      expect(g.directEdge(a.id, b.id)).toEqual(edge);
       expect(g.directEdge(b.id, a.id)).toBeUndefined();
     });
 
@@ -177,7 +185,7 @@ describe("CardGraph", () => {
       const { g, a, b } = makeGraph();
       const edge1 = g.addEdge(a.id, b.id);
       const edge2 = g.addEdge(a.id, b.id);
-      expect(edge2).toBe(edge1);
+      expect(edge2).toEqual(edge1);
       expect(g.allEdges()).toHaveLength(1);
     });
 
@@ -220,7 +228,8 @@ describe("CardGraph", () => {
       g.addEdge(b.id, c.id);
 
       const json = g.toJSON();
-      const g2 = new CardGraph();
+      const bundle2 = createYDoc();
+      const g2 = new CardGraph(bundle2);
       g2.loadJSON(json);
 
       expect(g2.allCards()).toHaveLength(3);
@@ -230,7 +239,8 @@ describe("CardGraph", () => {
     });
 
     test("toJSON creates deep copies", () => {
-      const g = new CardGraph();
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
       const card = g.addCard("test", { x: 0, y: 0 });
       const json = g.toJSON();
       json.cards[card.id].text = "mutated";
@@ -240,7 +250,8 @@ describe("CardGraph", () => {
 
   describe("onChange", () => {
     test("fires on addCard", () => {
-      const g = new CardGraph();
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
       let called = false;
       g.onChange = () => { called = true; };
       g.addCard("x", { x: 0, y: 0 });
@@ -248,7 +259,8 @@ describe("CardGraph", () => {
     });
 
     test("fires on updateCard", () => {
-      const g = new CardGraph();
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
       const card = g.addCard("x", { x: 0, y: 0 });
       let called = false;
       g.onChange = () => { called = true; };
@@ -257,7 +269,8 @@ describe("CardGraph", () => {
     });
 
     test("fires on removeCard", () => {
-      const g = new CardGraph();
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
       const card = g.addCard("x", { x: 0, y: 0 });
       let called = false;
       g.onChange = () => { called = true; };
@@ -266,7 +279,8 @@ describe("CardGraph", () => {
     });
 
     test("fires on addEdge", () => {
-      const g = new CardGraph();
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
       const a = g.addCard("a", { x: 0, y: 0 });
       const b = g.addCard("b", { x: 1, y: 0 });
       let called = false;
@@ -276,7 +290,8 @@ describe("CardGraph", () => {
     });
 
     test("fires on removeEdge", () => {
-      const g = new CardGraph();
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
       const a = g.addCard("a", { x: 0, y: 0 });
       const b = g.addCard("b", { x: 1, y: 0 });
       const edge = g.addEdge(a.id, b.id);
@@ -287,10 +302,12 @@ describe("CardGraph", () => {
     });
 
     test("fires on loadJSON", () => {
-      const g = new CardGraph();
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
       g.addCard("a", { x: 0, y: 0 });
       const json = g.toJSON();
-      const g2 = new CardGraph();
+      const bundle2 = createYDoc();
+      const g2 = new CardGraph(bundle2);
       let called = false;
       g2.onChange = () => { called = true; };
       g2.loadJSON(json);

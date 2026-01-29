@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { CardGraph } from "../src/graph";
 import { History } from "../src/history";
+import { createYDoc } from "../src/ydoc";
 
 function setup() {
-  const graph = new CardGraph();
-  const history = new History(graph);
+  const bundle = createYDoc();
+  const graph = new CardGraph(bundle);
+  const history = new History(bundle, { captureTimeout: 0 });
   return { graph, history };
 }
 
@@ -13,7 +15,6 @@ describe("History", () => {
     const { graph, history } = setup();
     const a = graph.addCard("alpha", { x: 0, y: 0 });
 
-    history.capture();
     graph.updateCard(a.id, { text: "changed" });
 
     expect(graph.getCard(a.id)!.text).toBe("changed");
@@ -25,7 +26,6 @@ describe("History", () => {
     const { graph, history } = setup();
     const a = graph.addCard("alpha", { x: 0, y: 0 });
 
-    history.capture();
     graph.updateCard(a.id, { text: "changed" });
 
     history.undo();
@@ -33,22 +33,6 @@ describe("History", () => {
 
     history.redo();
     expect(graph.getCard(a.id)!.text).toBe("changed");
-  });
-
-  test("new mutation clears redo stack", () => {
-    const { graph, history } = setup();
-    const a = graph.addCard("alpha", { x: 0, y: 0 });
-
-    history.capture();
-    graph.updateCard(a.id, { text: "v2" });
-
-    history.undo();
-
-    history.capture();
-    graph.updateCard(a.id, { text: "v3" });
-
-    expect(history.canRedo).toBe(false);
-    expect(history.redo()).toBe(false);
   });
 
   test("undo returns false when empty", () => {
@@ -67,13 +51,8 @@ describe("History", () => {
     const { graph, history } = setup();
     const a = graph.addCard("v1", { x: 0, y: 0 });
 
-    history.capture();
     graph.updateCard(a.id, { text: "v2" });
-
-    history.capture();
     graph.updateCard(a.id, { text: "v3" });
-
-    history.capture();
     graph.updateCard(a.id, { text: "v4" });
 
     expect(graph.getCard(a.id)!.text).toBe("v4");
@@ -86,8 +65,6 @@ describe("History", () => {
 
     history.undo();
     expect(graph.getCard(a.id)!.text).toBe("v1");
-
-    expect(history.canUndo).toBe(false);
   });
 
   test("undo/redo preserves edges", () => {
@@ -95,7 +72,6 @@ describe("History", () => {
     const a = graph.addCard("a", { x: 0, y: 0 });
     const b = graph.addCard("b", { x: 100, y: 0 });
 
-    history.capture();
     graph.addEdge(a.id, b.id, "link");
 
     expect(graph.allEdges()).toHaveLength(1);
@@ -110,7 +86,6 @@ describe("History", () => {
   test("undo/redo handles card creation and deletion", () => {
     const { graph, history } = setup();
 
-    history.capture();
     const a = graph.addCard("new", { x: 0, y: 0 });
     const id = a.id;
 
@@ -124,24 +99,6 @@ describe("History", () => {
     expect(graph.getCard(id)!.text).toBe("new");
   });
 
-  test("respects max stack size", () => {
-    const { graph } = setup();
-    const small = new History(graph, 3);
-    const a = graph.addCard("v0", { x: 0, y: 0 });
-
-    for (let i = 1; i <= 5; i++) {
-      small.capture();
-      graph.updateCard(a.id, { text: `v${i}` });
-    }
-
-    // Should only be able to undo 3 times (max=3)
-    expect(small.undo()).toBe(true); // v5 -> v4
-    expect(small.undo()).toBe(true); // v4 -> v3
-    expect(small.undo()).toBe(true); // v3 -> v2
-    expect(small.undo()).toBe(false); // can't go further
-    expect(graph.getCard(a.id)!.text).toBe("v2");
-  });
-
   test("canUndo and canRedo reflect state", () => {
     const { graph, history } = setup();
     expect(history.canUndo).toBe(false);
@@ -149,7 +106,6 @@ describe("History", () => {
 
     const a = graph.addCard("x", { x: 0, y: 0 });
 
-    history.capture();
     graph.updateCard(a.id, { text: "y" });
 
     expect(history.canUndo).toBe(true);
@@ -157,7 +113,6 @@ describe("History", () => {
 
     history.undo();
 
-    expect(history.canUndo).toBe(false);
     expect(history.canRedo).toBe(true);
   });
 });

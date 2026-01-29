@@ -10,6 +10,7 @@ import type { CardNodeEvents } from "./card-node";
 import { createEdgeGroup, updateEdgeGroup, ensureArrowDefs } from "./edge-line";
 import { setupKeybinds } from "./keybinds";
 import { SearchOverlay } from "./search";
+import type { YDocBundle } from "../ydoc";
 
 export class App {
   private canvas: Canvas;
@@ -25,12 +26,12 @@ export class App {
   private ghostEdge: SVGLineElement | null = null;
   private ghostEdgeSource: string | null = null;
 
-  constructor(container: HTMLElement, graph: CardGraph) {
+  constructor(container: HTMLElement, graph: CardGraph, bundle: YDocBundle) {
     this.graph = graph;
     this.navigator = new Navigator(graph);
     this.editor = new Editor(graph);
     this.selection = new Selection();
-    this.history = new History(graph);
+    this.history = new History(bundle);
     this.canvas = new Canvas(container);
     this.search = new SearchOverlay(
       () => this.graph.allCards(),

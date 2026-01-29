@@ -1,49 +1,40 @@
-import type { CardGraph } from "./graph";
-import type { CardGraphData } from "./types";
+import * as Y from "yjs";
+import type { YDocBundle } from "./ydoc";
 
-const DEFAULT_MAX = 100;
+export interface HistoryOptions {
+  captureTimeout?: number;
+}
 
 export class History {
-  private undoStack: CardGraphData[] = [];
-  private redoStack: CardGraphData[] = [];
-  private max: number;
-  private graph: CardGraph;
+  private undoManager: Y.UndoManager;
 
-  constructor(graph: CardGraph, max = DEFAULT_MAX) {
-    this.graph = graph;
-    this.max = max;
+  constructor(bundle: YDocBundle, options: HistoryOptions = {}) {
+    const { captureTimeout = 500 } = options;
+    this.undoManager = new Y.UndoManager([bundle.cards, bundle.edges], {
+      captureTimeout,
+    });
   }
 
-  /** Call before a mutation to snapshot the current state. */
-  capture(): void {
-    this.undoStack.push(this.graph.toJSON());
-    if (this.undoStack.length > this.max) {
-      this.undoStack.shift();
-    }
-    this.redoStack.length = 0;
-  }
+  /** No-op — Y.UndoManager auto-captures by transaction. */
+  capture(): void {}
 
   undo(): boolean {
-    const snapshot = this.undoStack.pop();
-    if (!snapshot) return false;
-    this.redoStack.push(this.graph.toJSON());
-    this.graph.loadJSON(snapshot);
+    if (!this.canUndo) return false;
+    this.undoManager.undo();
     return true;
   }
 
   redo(): boolean {
-    const snapshot = this.redoStack.pop();
-    if (!snapshot) return false;
-    this.undoStack.push(this.graph.toJSON());
-    this.graph.loadJSON(snapshot);
+    if (!this.canRedo) return false;
+    this.undoManager.redo();
     return true;
   }
 
   get canUndo(): boolean {
-    return this.undoStack.length > 0;
+    return this.undoManager.undoStack.length > 0;
   }
 
   get canRedo(): boolean {
-    return this.redoStack.length > 0;
+    return this.undoManager.redoStack.length > 0;
   }
 }

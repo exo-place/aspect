@@ -1,10 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { CardGraph } from "../src/graph";
 import { Navigator } from "../src/navigator";
+import { createYDoc } from "../src/ydoc";
 
 describe("Navigator", () => {
   function setup() {
-    const graph = new CardGraph();
+    const bundle = createYDoc();
+    const graph = new CardGraph(bundle);
     const a = graph.addCard("Alpha", { x: 0, y: 0 });
     const b = graph.addCard("Beta", { x: 100, y: 0 });
     const c = graph.addCard("Gamma", { x: 200, y: 0 });
@@ -23,7 +25,7 @@ describe("Navigator", () => {
   test("jumpTo sets current card", () => {
     const { nav, a } = setup();
     nav.jumpTo(a.id);
-    expect(nav.current).toBe(a);
+    expect(nav.current!.id).toBe(a.id);
   });
 
   test("jumpTo throws for unknown card", () => {

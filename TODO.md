@@ -11,7 +11,7 @@
 
 - [x] IndexedDB storage backend
 - [x] Undo/redo stack in Editor
-- [ ] Y.js multiplayer upgrade
+- [x] Y.js multiplayer upgrade
 - [x] Edge labels visible in UI
 - [x] Keyboard navigation (arrow keys follow edges)
 - [x] Card search / jump-to by text

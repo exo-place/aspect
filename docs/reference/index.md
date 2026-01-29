@@ -13,7 +13,7 @@
 
 ### CardGraph
 
-In-memory card and edge store with change notifications.
+Y.js CRDT-backed card and edge store with change notifications.
 
 - `addCard(text, position)` — create a new card
 - `getCard(id)` — retrieve a card by ID
@@ -46,15 +46,15 @@ Thin mutation layer over CardGraph.
 - `setPosition(id, position)` — change a card's position
 - `onEdit` — callback fired on edits
 
-### Store
+### Persistence & Multiplayer
 
-Pluggable persistence interface.
+All state lives in a `Y.Doc` (Y.js CRDT). Persistence and sync are handled automatically:
 
-- `save(data)` — persist graph data
-- `load()` — retrieve saved data (or null)
-- `clear()` — remove saved data
+- **y-indexeddb** — local persistence to IndexedDB for offline support
+- **y-websocket** — real-time sync via WebSocket at `/ws/:room`
+- **Y.UndoManager** — per-client undo/redo (tracks cards and edges)
 
-Implemented by `LocalStorageStore`. Async API supports future IndexedDB and FS Access backends.
+Open `/room/<name>` in multiple tabs or browsers to share a world.
 
 ## Canvas Interactions
 
