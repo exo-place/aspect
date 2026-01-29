@@ -1,0 +1,225 @@
+import { describe, expect, test } from "bun:test";
+import { CardGraph } from "../src/graph";
+
+describe("CardGraph", () => {
+  function makeGraph() {
+    const g = new CardGraph();
+    const a = g.addCard("Alpha", { x: 0, y: 0 });
+    const b = g.addCard("Beta", { x: 100, y: 0 });
+    const c = g.addCard("Gamma", { x: 200, y: 0 });
+    return { g, a, b, c };
+  }
+
+  describe("cards", () => {
+    test("addCard creates a card with id, text, and position", () => {
+      const g = new CardGraph();
+      const card = g.addCard("hello", { x: 10, y: 20 });
+      expect(card.id).toBeString();
+      expect(card.text).toBe("hello");
+      expect(card.position).toEqual({ x: 10, y: 20 });
+    });
+
+    test("getCard retrieves a card by id", () => {
+      const g = new CardGraph();
+      const card = g.addCard("hello", { x: 0, y: 0 });
+      expect(g.getCard(card.id)).toBe(card);
+    });
+
+    test("getCard returns undefined for unknown id", () => {
+      const g = new CardGraph();
+      expect(g.getCard("nope")).toBeUndefined();
+    });
+
+    test("updateCard patches text", () => {
+      const { g, a } = makeGraph();
+      g.updateCard(a.id, { text: "Updated" });
+      expect(g.getCard(a.id)!.text).toBe("Updated");
+    });
+
+    test("updateCard patches position", () => {
+      const { g, a } = makeGraph();
+      g.updateCard(a.id, { position: { x: 50, y: 50 } });
+      expect(g.getCard(a.id)!.position).toEqual({ x: 50, y: 50 });
+    });
+
+    test("updateCard throws for unknown id", () => {
+      const g = new CardGraph();
+      expect(() => g.updateCard("nope", { text: "x" })).toThrow("Card not found");
+    });
+
+    test("removeCard deletes the card", () => {
+      const { g, a } = makeGraph();
+      g.removeCard(a.id);
+      expect(g.getCard(a.id)).toBeUndefined();
+    });
+
+    test("removeCard throws for unknown id", () => {
+      const g = new CardGraph();
+      expect(() => g.removeCard("nope")).toThrow("Card not found");
+    });
+
+    test("removeCard cascades edges", () => {
+      const { g, a, b } = makeGraph();
+      g.addEdge(a.id, b.id);
+      g.removeCard(a.id);
+      expect(g.allEdges()).toHaveLength(0);
+    });
+
+    test("allCards returns all cards", () => {
+      const { g } = makeGraph();
+      expect(g.allCards()).toHaveLength(3);
+    });
+  });
+
+  describe("edges", () => {
+    test("addEdge creates an edge between cards", () => {
+      const { g, a, b } = makeGraph();
+      const edge = g.addEdge(a.id, b.id, "path");
+      expect(edge.from).toBe(a.id);
+      expect(edge.to).toBe(b.id);
+      expect(edge.label).toBe("path");
+    });
+
+    test("addEdge throws for unknown from card", () => {
+      const { g, b } = makeGraph();
+      expect(() => g.addEdge("nope", b.id)).toThrow("Card not found");
+    });
+
+    test("addEdge throws for unknown to card", () => {
+      const { g, a } = makeGraph();
+      expect(() => g.addEdge(a.id, "nope")).toThrow("Card not found");
+    });
+
+    test("removeEdge deletes the edge", () => {
+      const { g, a, b } = makeGraph();
+      const edge = g.addEdge(a.id, b.id);
+      g.removeEdge(edge.id);
+      expect(g.allEdges()).toHaveLength(0);
+    });
+
+    test("removeEdge throws for unknown id", () => {
+      const g = new CardGraph();
+      expect(() => g.removeEdge("nope")).toThrow("Edge not found");
+    });
+
+    test("edgesFrom returns outgoing edges", () => {
+      const { g, a, b, c } = makeGraph();
+      g.addEdge(a.id, b.id);
+      g.addEdge(a.id, c.id);
+      g.addEdge(b.id, c.id);
+      expect(g.edgesFrom(a.id)).toHaveLength(2);
+      expect(g.edgesFrom(b.id)).toHaveLength(1);
+    });
+
+    test("edgesTo returns incoming edges", () => {
+      const { g, a, b, c } = makeGraph();
+      g.addEdge(a.id, c.id);
+      g.addEdge(b.id, c.id);
+      expect(g.edgesTo(c.id)).toHaveLength(2);
+      expect(g.edgesTo(a.id)).toHaveLength(0);
+    });
+
+    test("neighbors returns adjacent cards in both directions", () => {
+      const { g, a, b, c } = makeGraph();
+      g.addEdge(a.id, b.id);
+      g.addEdge(c.id, a.id);
+      const neighbors = g.neighbors(a.id);
+      expect(neighbors).toHaveLength(2);
+      const ids = neighbors.map((n) => n.id);
+      expect(ids).toContain(b.id);
+      expect(ids).toContain(c.id);
+    });
+
+    test("allEdges returns all edges", () => {
+      const { g, a, b, c } = makeGraph();
+      g.addEdge(a.id, b.id);
+      g.addEdge(b.id, c.id);
+      expect(g.allEdges()).toHaveLength(2);
+    });
+  });
+
+  describe("serialization", () => {
+    test("toJSON round-trips through loadJSON", () => {
+      const { g, a, b, c } = makeGraph();
+      g.addEdge(a.id, b.id, "link");
+      g.addEdge(b.id, c.id);
+
+      const json = g.toJSON();
+      const g2 = new CardGraph();
+      g2.loadJSON(json);
+
+      expect(g2.allCards()).toHaveLength(3);
+      expect(g2.allEdges()).toHaveLength(2);
+      expect(g2.getCard(a.id)!.text).toBe("Alpha");
+      expect(g2.edgesFrom(a.id)[0].label).toBe("link");
+    });
+
+    test("toJSON creates deep copies", () => {
+      const g = new CardGraph();
+      const card = g.addCard("test", { x: 0, y: 0 });
+      const json = g.toJSON();
+      json.cards[card.id].text = "mutated";
+      expect(g.getCard(card.id)!.text).toBe("test");
+    });
+  });
+
+  describe("onChange", () => {
+    test("fires on addCard", () => {
+      const g = new CardGraph();
+      let called = false;
+      g.onChange = () => { called = true; };
+      g.addCard("x", { x: 0, y: 0 });
+      expect(called).toBe(true);
+    });
+
+    test("fires on updateCard", () => {
+      const g = new CardGraph();
+      const card = g.addCard("x", { x: 0, y: 0 });
+      let called = false;
+      g.onChange = () => { called = true; };
+      g.updateCard(card.id, { text: "y" });
+      expect(called).toBe(true);
+    });
+
+    test("fires on removeCard", () => {
+      const g = new CardGraph();
+      const card = g.addCard("x", { x: 0, y: 0 });
+      let called = false;
+      g.onChange = () => { called = true; };
+      g.removeCard(card.id);
+      expect(called).toBe(true);
+    });
+
+    test("fires on addEdge", () => {
+      const g = new CardGraph();
+      const a = g.addCard("a", { x: 0, y: 0 });
+      const b = g.addCard("b", { x: 1, y: 0 });
+      let called = false;
+      g.onChange = () => { called = true; };
+      g.addEdge(a.id, b.id);
+      expect(called).toBe(true);
+    });
+
+    test("fires on removeEdge", () => {
+      const g = new CardGraph();
+      const a = g.addCard("a", { x: 0, y: 0 });
+      const b = g.addCard("b", { x: 1, y: 0 });
+      const edge = g.addEdge(a.id, b.id);
+      let called = false;
+      g.onChange = () => { called = true; };
+      g.removeEdge(edge.id);
+      expect(called).toBe(true);
+    });
+
+    test("fires on loadJSON", () => {
+      const g = new CardGraph();
+      g.addCard("a", { x: 0, y: 0 });
+      const json = g.toJSON();
+      const g2 = new CardGraph();
+      let called = false;
+      g2.onChange = () => { called = true; };
+      g2.loadJSON(json);
+      expect(called).toBe(true);
+    });
+  });
+});
