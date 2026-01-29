@@ -32,6 +32,9 @@ export class App {
           this.editor.setText(cardId, text);
         });
       },
+      onDelete: (cardId) => {
+        this.deleteCard(cardId);
+      },
       onDragStart: () => {},
       onDrag: () => {
         this.renderEdges();
@@ -66,6 +69,18 @@ export class App {
 
     this.graph.onChange = () => this.render();
     this.navigator.onNavigate = () => this.render();
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Backspace" || e.key === "Delete") {
+        // Don't delete while editing text
+        if (document.querySelector(".card-editor")) return;
+        const current = this.navigator.current;
+        if (current) {
+          e.preventDefault();
+          this.deleteCard(current.id);
+        }
+      }
+    });
   }
 
   get nav(): Navigator {
@@ -121,6 +136,20 @@ export class App {
       if (!activeEdgeIds.has(id)) {
         el.remove();
         this.edgeElements.delete(id);
+      }
+    }
+  }
+
+  private deleteCard(cardId: string): void {
+    const neighbors = this.graph.neighbors(cardId);
+    this.graph.removeCard(cardId);
+    // Navigate to a neighbor, or null if none left
+    if (neighbors.length > 0) {
+      this.navigator.jumpTo(neighbors[0].id);
+    } else {
+      const remaining = this.graph.allCards();
+      if (remaining.length > 0) {
+        this.navigator.jumpTo(remaining[0].id);
       }
     }
   }

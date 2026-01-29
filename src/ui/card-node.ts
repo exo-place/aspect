@@ -3,6 +3,7 @@ import type { Card } from "../types";
 export interface CardNodeEvents {
   onClick(cardId: string): void;
   onDoubleClick(cardId: string, element: HTMLDivElement): void;
+  onDelete(cardId: string): void;
   onDragStart(cardId: string): void;
   onDrag(cardId: string, worldX: number, worldY: number): void;
   onDragEnd(cardId: string): void;
@@ -24,6 +25,7 @@ export function createCardElement(
   let cardOriginY = 0;
 
   el.addEventListener("pointerdown", (e) => {
+    if (e.button !== 0) return;
     e.stopPropagation();
     isDragging = true;
     dragStartX = e.clientX;
@@ -62,6 +64,12 @@ export function createCardElement(
   el.addEventListener("dblclick", (e) => {
     e.stopPropagation();
     events.onDoubleClick(cardId, el);
+  });
+
+  el.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    showCardMenu(e.clientX, e.clientY, () => events.onDelete(cardId));
   });
 
   return el;
@@ -117,5 +125,36 @@ export function startEditing(
       textarea.value = currentText;
       commit();
     }
+  });
+}
+
+function showCardMenu(x: number, y: number, onDelete: () => void): void {
+  const existing = document.querySelector(".card-menu");
+  if (existing) existing.remove();
+
+  const menu = document.createElement("div");
+  menu.className = "card-menu";
+  menu.style.left = `${x}px`;
+  menu.style.top = `${y}px`;
+
+  const del = document.createElement("button");
+  del.className = "card-menu-item delete";
+  del.textContent = "Delete";
+  del.addEventListener("click", () => {
+    menu.remove();
+    onDelete();
+  });
+  menu.appendChild(del);
+
+  document.body.appendChild(menu);
+
+  const dismiss = (e: Event) => {
+    if (!menu.contains(e.target as Node)) {
+      menu.remove();
+      document.removeEventListener("pointerdown", dismiss);
+    }
+  };
+  requestAnimationFrame(() => {
+    document.addEventListener("pointerdown", dismiss);
   });
 }
