@@ -10,8 +10,6 @@ export interface CanvasEvents {
   onContextMenu(screenX: number, screenY: number, worldX: number, worldY: number): void;
 }
 
-const MIN_ZOOM = 0.1;
-const MAX_ZOOM = 4;
 const ZOOM_SENSITIVITY = 0.001;
 
 export class Canvas {
@@ -19,6 +17,9 @@ export class Canvas {
   readonly world: HTMLDivElement;
   readonly edgeLayer: SVGSVGElement;
   readonly cardLayer: HTMLDivElement;
+
+  minZoom = 0.1;
+  maxZoom = 4;
 
   private state: CanvasState = { panX: 0, panY: 0, zoom: 1 };
   private isPanning = false;
@@ -136,7 +137,7 @@ export class Canvas {
 
     const oldZoom = this.state.zoom;
     const delta = -e.deltaY * ZOOM_SENSITIVITY;
-    const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, oldZoom * (1 + delta)));
+    const newZoom = Math.min(this.maxZoom, Math.max(this.minZoom, oldZoom * (1 + delta)));
 
     // Zoom toward cursor
     this.state.panX = mouseX - (mouseX - this.state.panX) * (newZoom / oldZoom);

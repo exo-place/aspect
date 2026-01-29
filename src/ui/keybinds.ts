@@ -18,6 +18,7 @@ export interface KeybindHandlers {
   labelEdge(): void;
   deselect(): void;
   search(): void;
+  openSettings(): void;
   undo(): void;
   redo(): void;
   navigateDirection(direction: "up" | "down" | "left" | "right"): void;
@@ -28,6 +29,7 @@ export interface KeybindHandlers {
   getCurrentCardId(): string | null;
   getSelectedCount(): number;
   getViewportCenter(): { x: number; y: number };
+  isSettingsOpen(): boolean;
 }
 
 const schema = defineSchema({
@@ -127,8 +129,8 @@ const schema = defineSchema({
     category: "General",
     keys: ["$mod+K"],
   },
-  "keybind-settings": {
-    label: "Keyboard shortcuts",
+  settings: {
+    label: "Settings",
     category: "General",
     keys: ["$mod+,"],
   },
@@ -182,70 +184,67 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
         const el = document.querySelector("command-palette");
         if (el) (el as HTMLElement & { open: boolean }).open = !((el as HTMLElement & { open: boolean }).open);
       },
-      "keybind-settings": () => {
-        const el = document.querySelector("keybind-settings");
-        if (el) (el as HTMLElement & { open: boolean }).open = !((el as HTMLElement & { open: boolean }).open);
-      },
+      settings: () => handlers.openSettings(),
     },
     {
       "edit-card": {
-        when: (ctx) => ctx.cardId != null && !ctx.isEditing,
+        when: (ctx) => ctx.cardId != null && !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "delete-card": {
-        when: (ctx) => (ctx.cardId != null || (ctx.selectedCount as number) > 0) && !ctx.isEditing,
+        when: (ctx) => (ctx.cardId != null || (ctx.selectedCount as number) > 0) && !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "set-kind": {
-        when: (ctx) => ctx.cardId != null && !ctx.isEditing,
+        when: (ctx) => ctx.cardId != null && !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "link-cards": {
-        when: (ctx) => (ctx.selectedCount as number) >= 2 && !ctx.isEditing,
+        when: (ctx) => (ctx.selectedCount as number) >= 2 && !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "unlink-cards": {
-        when: (ctx) => (ctx.selectedCount as number) >= 2 && !ctx.isEditing,
+        when: (ctx) => (ctx.selectedCount as number) >= 2 && !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "label-edge": {
-        when: (ctx) => (ctx.selectedCount as number) === 2 && !ctx.isEditing,
+        when: (ctx) => (ctx.selectedCount as number) === 2 && !ctx.isEditing && !ctx.isSettingsOpen,
       },
       undo: {
-        when: (ctx) => !ctx.isEditing,
+        when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
       },
       redo: {
-        when: (ctx) => !ctx.isEditing,
+        when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "nav-up": {
-        when: (ctx) => ctx.cardId != null && !ctx.isEditing,
+        when: (ctx) => ctx.cardId != null && !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "nav-down": {
-        when: (ctx) => ctx.cardId != null && !ctx.isEditing,
+        when: (ctx) => ctx.cardId != null && !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "nav-left": {
-        when: (ctx) => ctx.cardId != null && !ctx.isEditing,
+        when: (ctx) => ctx.cardId != null && !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "nav-right": {
-        when: (ctx) => ctx.cardId != null && !ctx.isEditing,
+        when: (ctx) => ctx.cardId != null && !ctx.isEditing && !ctx.isSettingsOpen,
       },
       search: {
-        when: (ctx) => !ctx.isEditing && !ctx.isSearching,
+        when: (ctx) => !ctx.isEditing && !ctx.isSearching && !ctx.isSettingsOpen,
       },
       deselect: {
-        when: (ctx) => !ctx.isEditing,
+        when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "export-graph": {
-        when: (ctx) => !ctx.isEditing,
+        when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "import-graph": {
-        when: (ctx) => !ctx.isEditing,
+        when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "export-pack": {
-        when: (ctx) => !ctx.isEditing,
+        when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "import-pack": {
-        when: (ctx) => !ctx.isEditing,
+        when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "command-palette": {
         captureInput: true,
       },
-      "keybind-settings": {
+      settings: {
         captureInput: true,
       },
     },
@@ -288,6 +287,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
     selectedCount: handlers.getSelectedCount(),
     isEditing: !!document.querySelector(".card-editor"),
     isSearching: !!document.querySelector(".search-overlay"),
+    isSettingsOpen: handlers.isSettingsOpen(),
   });
 
   const cleanup = keybinds(commands, getContext);

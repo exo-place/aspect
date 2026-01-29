@@ -17,6 +17,9 @@ import { setupKeybinds } from "./keybinds";
 import { SearchOverlay } from "./search";
 import { showKindPicker } from "./kind-picker";
 import { Minimap } from "./minimap";
+import { SettingsPanel } from "./settings-panel";
+import { SettingsStore } from "../settings";
+import type { EdgeStyle } from "./edge-line";
 import type { YDocBundle } from "../ydoc";
 import { downloadJSON, uploadJSON } from "../file-io";
 import { exportSnapshot, validateSnapshot, importSnapshotReplace } from "../snapshot";
@@ -33,6 +36,8 @@ export class App {
   private presence: Presence;
   private presencePanel: PresencePanel;
   private packStore: WorldPackStore;
+  private settings: SettingsStore;
+  private settingsPanel: SettingsPanel;
   private cardElements = new Map<string, HTMLDivElement>();
   private edgeElements = new Map<string, SVGGElement>();
   private minimap: Minimap;
@@ -67,6 +72,31 @@ export class App {
         onClose: () => {},
       },
     );
+    this.settings = new SettingsStore();
+    this.settingsPanel = new SettingsPanel(this.settings);
+
+    // Apply initial settings
+    this.canvas.minZoom = this.settings.get("minZoom");
+    this.canvas.maxZoom = this.settings.get("maxZoom");
+
+    this.settings.addEventListener("change", ((e: CustomEvent) => {
+      const { key } = e.detail as { key: string; value: unknown };
+      switch (key) {
+        case "edgeStyle":
+          this.renderEdges();
+          break;
+        case "showMinimap":
+          this.minimap.el.style.display = this.settings.get("showMinimap") ? "" : "none";
+          break;
+        case "minZoom":
+          this.canvas.minZoom = this.settings.get("minZoom");
+          break;
+        case "maxZoom":
+          this.canvas.maxZoom = this.settings.get("maxZoom");
+          break;
+      }
+    }) as EventListener);
+
     ensureArrowDefs(this.canvas.edgeLayer);
 
     this.canvas.edgeLayer.addEventListener("dblclick", (e) => {
@@ -79,6 +109,9 @@ export class App {
 
     this.minimap = new Minimap();
     container.appendChild(this.minimap.el);
+    if (!this.settings.get("showMinimap")) {
+      this.minimap.el.style.display = "none";
+    }
     this.minimap.onClick = (worldX, worldY) => {
       this.canvas.centerOn(worldX, worldY);
     };
@@ -96,6 +129,13 @@ export class App {
       redo: () => this.history.redo(),
       navigateDirection: (dir) => this.navigateDirection(dir),
       search: () => this.search.open(),
+      openSettings: () => {
+        if (this.settingsPanel.isOpen) {
+          this.settingsPanel.close();
+        } else {
+          this.settingsPanel.open();
+        }
+      },
       exportGraph: () => this.exportGraph(),
       importGraph: () => this.importGraph(),
       exportPack: () => this.exportPack(),
@@ -107,6 +147,7 @@ export class App {
       getCurrentCardId: () => this.navigator.current?.id ?? null,
       getSelectedCount: () => this.selection.size,
       getViewportCenter: () => this.canvas.getViewportCenter(),
+      isSettingsOpen: () => this.settingsPanel.isOpen,
     });
 
     this.cardEvents = {
@@ -300,6 +341,7 @@ export class App {
   private renderEdges(): void {
     const currentId = this.navigator.current?.id ?? null;
     const allEdges = this.graph.allEdges();
+    const edgeStyle = this.settings.get("edgeStyle") as EdgeStyle;
 
     // Detect paired edges (A→B and B→A both exist)
     const edgeKeys = new Set<string>();
@@ -326,7 +368,7 @@ export class App {
       const toEl = this.cardElements.get(edge.to);
       if (fromEl && toEl) {
         const isPaired = pairedKeys.has(`${edge.from}:${edge.to}`);
-        updateEdgeGroup(group, fromEl, toEl, edge.from === currentId || edge.to === currentId, edge.label, undefined, isPaired ? 8 : 0);
+        updateEdgeGroup(group, fromEl, toEl, edge.from === currentId || edge.to === currentId, edge.label, edgeStyle, isPaired ? 8 : 0);
       }
     }
     for (const [id, el] of this.edgeElements) {

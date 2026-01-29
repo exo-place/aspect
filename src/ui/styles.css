@@ -459,3 +459,208 @@ html, body {
   border-radius: 2px;
   pointer-events: none;
 }
+
+/* Settings panel */
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 60px;
+}
+
+.settings-panel {
+  width: 420px;
+  max-height: calc(100vh - 120px);
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px 12px;
+  border-bottom: 1px solid #333;
+}
+
+.settings-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #e0e0e0;
+}
+
+.settings-close {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+
+.settings-close:hover {
+  color: #e0e0e0;
+}
+
+.settings-search {
+  margin: 12px 20px 8px;
+  padding: 8px 12px;
+  background: #111;
+  border: 1px solid #444;
+  border-radius: 5px;
+  color: #e0e0e0;
+  font: inherit;
+  font-size: 13px;
+  outline: none;
+}
+
+.settings-search:focus {
+  border-color: #7c9cff;
+}
+
+.settings-body {
+  padding: 8px 20px 16px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.settings-section-heading {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #888;
+  margin: 16px 0 8px;
+}
+
+.settings-section-heading:first-child {
+  margin-top: 8px;
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  gap: 12px;
+}
+
+.settings-label {
+  font-size: 13px;
+  color: #ccc;
+  flex-shrink: 0;
+}
+
+/* Toggle switch */
+.settings-toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.settings-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+
+.settings-toggle-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #444;
+  border-radius: 10px;
+  transition: background 0.2s;
+}
+
+.settings-toggle-slider::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  left: 3px;
+  bottom: 3px;
+  background: #ccc;
+  border-radius: 50%;
+  transition: transform 0.2s;
+}
+
+.settings-toggle input:checked + .settings-toggle-slider {
+  background: #7c9cff;
+}
+
+.settings-toggle input:checked + .settings-toggle-slider::after {
+  transform: translateX(16px);
+  background: #fff;
+}
+
+/* Select */
+.settings-select {
+  background: #111;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 8px;
+  outline: none;
+  cursor: pointer;
+  max-width: 180px;
+}
+
+.settings-select:focus {
+  border-color: #7c9cff;
+}
+
+/* Number input */
+.settings-number {
+  background: #111;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 8px;
+  outline: none;
+  width: 80px;
+  text-align: right;
+}
+
+.settings-number:focus {
+  border-color: #7c9cff;
+}
+
+/* Keybinds button */
+.settings-keybinds-btn {
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #ccc;
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 12px;
+  cursor: pointer;
+}
+
+.settings-keybinds-btn:hover {
+  background: #333;
+  color: #e0e0e0;
+}

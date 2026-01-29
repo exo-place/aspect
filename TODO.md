@@ -37,7 +37,7 @@
 - [ ] **Touch support** — pinch-to-zoom, tap-to-select, long-press context menu for mobile/tablet
 - [ ] **Accessibility audit** — ARIA roles on cards/edges, keyboard focus management, screen reader labels
 - [x] **Export/import** — JSON snapshot export/import with validation (`src/snapshot.ts`, `src/file-io.ts`)
-- [ ] **Settings UI** — user-configurable settings panel (edge curve style, minimap canvas-rendering threshold, etc.)
+- [x] **Settings UI** — user-configurable settings panel (`src/settings.ts`, `src/ui/settings-panel.ts`, `$mod+,`)
 
 ## Phase 1 remaining: world pack polish
 

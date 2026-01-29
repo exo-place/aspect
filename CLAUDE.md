@@ -44,6 +44,14 @@ Key modules:
 - `src/snapshot.ts` — export, validate, replace-import, merge-import
 - `src/file-io.ts` — `downloadJSON()` / `uploadJSON()` browser file helpers
 
+### Settings
+
+User-configurable preferences stored in localStorage (sparse overrides, only non-default values persisted). Schema-driven: adding a new setting = adding one entry to `SETTINGS_SCHEMA`.
+
+Key modules:
+- `src/settings.ts` — `SettingsStore` class (extends `EventTarget`, dispatches `"change"` events) + `SETTINGS_SCHEMA`
+- `src/ui/settings-panel.ts` — `SettingsPanel` overlay with fuzzy search, auto-generated controls, keyboard shortcuts link
+
 ### UI Components
 
 - `src/ui/minimap.ts` — `Minimap` class: overview inset showing all cards and viewport, click-to-navigate, independent zoom
