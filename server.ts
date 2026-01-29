@@ -3,10 +3,19 @@ const server = Bun.serve({
   async fetch(req) {
     const url = new URL(req.url);
     const path = url.pathname === "/" ? "/public/index.html" : url.pathname;
-    const file = Bun.file(
-      path.startsWith("/public/") ? `.${path}` : `./public${path}`,
-    );
-    if (path.startsWith("/src/")) {
+
+    // Serve CSS files directly
+    if (path.endsWith(".css")) {
+      const css = Bun.file(`.${path}`);
+      if (await css.exists()) {
+        return new Response(css, {
+          headers: { "Content-Type": "text/css" },
+        });
+      }
+    }
+
+    // Bundle TypeScript from src/
+    if (path.startsWith("/src/") && path.endsWith(".ts")) {
       const src = Bun.file(`.${path}`);
       if (await src.exists()) {
         const built = await Bun.build({ entrypoints: [`.${path}`], target: "browser" });
@@ -16,15 +25,13 @@ const server = Bun.serve({
         });
       }
     }
-    if (path.endsWith(".css")) {
-      const css = Bun.file(`.${path}`);
-      if (await css.exists()) {
-        return new Response(css, {
-          headers: { "Content-Type": "text/css" },
-        });
-      }
-    }
+
+    // Static files from public/
+    const file = Bun.file(
+      path.startsWith("/public/") ? `.${path}` : `./public${path}`,
+    );
     if (await file.exists()) return new Response(file);
+
     // SPA fallback
     return new Response(Bun.file("./public/index.html"));
   },
