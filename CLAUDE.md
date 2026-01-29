@@ -21,7 +21,7 @@ Part of the [exo-place ecosystem](https://exo-place.github.io).
 
 ### Core Primitives
 
-- **Card** — atomic unit of existence with text content, edges, and optional `kind`
+- **Card** — atomic unit of existence with text content, edges, optional `kind`, and optional `width`
 - **Edge** — directional connection between two cards, with optional `type`
 - **Navigate** — move to a connected card along an edge
 - **Edit** — modify the content of the current card
@@ -43,6 +43,12 @@ Full graph state can be exported/imported as JSON files (`AspectSnapshot` format
 Key modules:
 - `src/snapshot.ts` — export, validate, replace-import, merge-import
 - `src/file-io.ts` — `downloadJSON()` / `uploadJSON()` browser file helpers
+
+### UI Components
+
+- `src/ui/minimap.ts` — `Minimap` class: overview inset showing all cards and viewport, click-to-navigate, independent zoom
+- `src/ui/card-node.ts` — card DOM element creation with drag, resize handle, edge-drag, and editing
+- `src/ui/edge-line.ts` — SVG edge rendering with multiple styles, labels (double-click to edit), arrow markers
 
 ### Multiplayer
 

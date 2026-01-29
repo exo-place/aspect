@@ -30,13 +30,14 @@
 
 ## Immediate: polish and prep
 
-- [ ] **Edge label editing UX** — double-click edge label to edit inline (currently requires menu)
-- [ ] **Multi-select delete** — Backspace/Delete removes all selected cards, not just current
-- [ ] **Canvas minimap** — small overview inset showing full graph extent and viewport position
-- [ ] **Card resize** — cards auto-size to content but allow manual width override
+- [x] **Edge label editing UX** — double-click edge label to edit inline (`src/ui/edge-line.ts`, `src/ui/app.ts`)
+- [x] **Multi-select delete** — Backspace/Delete removes all selected cards (`removeCards()` in `src/graph.ts`)
+- [x] **Canvas minimap** — overview inset with click-to-navigate (`src/ui/minimap.ts`)
+- [x] **Card resize** — manual width override via drag handle (`setWidth()` in `src/graph.ts`, `src/ui/card-node.ts`)
 - [ ] **Touch support** — pinch-to-zoom, tap-to-select, long-press context menu for mobile/tablet
 - [ ] **Accessibility audit** — ARIA roles on cards/edges, keyboard focus management, screen reader labels
 - [x] **Export/import** — JSON snapshot export/import with validation (`src/snapshot.ts`, `src/file-io.ts`)
+- [ ] **Settings UI** — user-configurable settings panel (edge curve style, minimap canvas-rendering threshold, etc.)
 
 ## Phase 1 remaining: world pack polish
 
