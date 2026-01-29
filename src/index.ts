@@ -1,5 +1,6 @@
 import { WebsocketProvider } from "y-websocket";
 import { CardGraph } from "./graph";
+import { Presence } from "./presence";
 import { setupPersistence } from "./persistence";
 import { createYDoc } from "./ydoc";
 import { App } from "./ui/app";
@@ -65,7 +66,7 @@ async function main() {
 
   // Connect WebSocket provider for multiplayer
   const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
-  new WebsocketProvider(`${wsProtocol}//${location.host}/ws/${roomName}`, roomName, doc);
+  const provider = new WebsocketProvider(`${wsProtocol}//${location.host}/ws/${roomName}`, roomName, doc);
 
   // Wait for local persistence to sync
   await persistence.whenSynced;
@@ -77,7 +78,8 @@ async function main() {
     await migrateOldStore(graph);
   }
 
-  const app = new App(container, graph, bundle);
+  const presence = new Presence(provider.awareness);
+  const app = new App(container, graph, bundle, presence);
   app.bootstrap();
 }
 

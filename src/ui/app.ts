@@ -3,11 +3,14 @@ import { Navigator } from "../navigator";
 import { Editor } from "../editor";
 import { Selection } from "../selection";
 import { History } from "../history";
+import type { Presence } from "../presence";
 import { resolveEdgeToggle } from "../edge-toggle";
 import { Canvas } from "./canvas";
 import { createCardElement, updateCardElement, startEditing } from "./card-node";
 import type { CardNodeEvents } from "./card-node";
 import { createEdgeGroup, updateEdgeGroup, ensureArrowDefs } from "./edge-line";
+import { renderPresenceDots } from "./presence-dots";
+import { PresencePanel } from "./presence-panel";
 import { setupKeybinds } from "./keybinds";
 import { SearchOverlay } from "./search";
 import type { YDocBundle } from "../ydoc";
@@ -20,19 +23,27 @@ export class App {
   private selection: Selection;
   private history: History;
   private search: SearchOverlay;
+  private presence: Presence;
+  private presencePanel: PresencePanel;
   private cardElements = new Map<string, HTMLDivElement>();
   private edgeElements = new Map<string, SVGGElement>();
   private cardEvents: CardNodeEvents;
   private ghostEdge: SVGLineElement | null = null;
   private ghostEdgeSource: string | null = null;
 
-  constructor(container: HTMLElement, graph: CardGraph, bundle: YDocBundle) {
+  constructor(container: HTMLElement, graph: CardGraph, bundle: YDocBundle, presence: Presence) {
     this.graph = graph;
     this.navigator = new Navigator(graph);
     this.editor = new Editor(graph);
     this.selection = new Selection();
     this.history = new History(bundle);
     this.canvas = new Canvas(container);
+    this.presence = presence;
+    this.presencePanel = new PresencePanel(
+      container,
+      presence,
+      (cardId) => this.graph.getCard(cardId)?.text ?? "",
+    );
     this.search = new SearchOverlay(
       () => this.graph.allCards(),
       {
@@ -195,8 +206,12 @@ export class App {
     };
 
     this.graph.onChange = () => this.render();
-    this.navigator.onNavigate = () => this.render();
+    this.navigator.onNavigate = (card) => {
+      this.presence.setCurrentCard(card?.id ?? null);
+      this.render();
+    };
     this.selection.onChange = () => this.render();
+    this.presence.onChange = () => this.renderPresence();
   }
 
   get nav(): Navigator {
@@ -218,6 +233,7 @@ export class App {
         this.cardElements.set(card.id, el);
       }
       updateCardElement(el, card, card.id === currentId, this.selection.has(card.id));
+      renderPresenceDots(el, this.presence.getPeersOnCard(card.id));
     }
     for (const [id, el] of this.cardElements) {
       if (!activeCardIds.has(id)) {
@@ -227,6 +243,14 @@ export class App {
     }
 
     this.renderEdges();
+    this.presencePanel.render();
+  }
+
+  private renderPresence(): void {
+    for (const [cardId, el] of this.cardElements) {
+      renderPresenceDots(el, this.presence.getPeersOnCard(cardId));
+    }
+    this.presencePanel.render();
   }
 
   private renderEdges(): void {
