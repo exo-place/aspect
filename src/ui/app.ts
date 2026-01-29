@@ -16,6 +16,7 @@ import { PresencePanel } from "./presence-panel";
 import { setupKeybinds } from "./keybinds";
 import { SearchOverlay } from "./search";
 import { showKindPicker } from "./kind-picker";
+import { Minimap } from "./minimap";
 import type { YDocBundle } from "../ydoc";
 import { downloadJSON, uploadJSON } from "../file-io";
 import { exportSnapshot, validateSnapshot, importSnapshotReplace } from "../snapshot";
@@ -34,6 +35,7 @@ export class App {
   private packStore: WorldPackStore;
   private cardElements = new Map<string, HTMLDivElement>();
   private edgeElements = new Map<string, SVGGElement>();
+  private minimap: Minimap;
   private cardEvents: CardNodeEvents;
   private ghostEdge: SVGLineElement | null = null;
   private ghostEdgeSource: string | null = null;
@@ -74,6 +76,13 @@ export class App {
       const edgeId = g?.dataset.edgeId;
       if (edgeId) this.labelEdgeById(edgeId);
     });
+
+    this.minimap = new Minimap();
+    container.appendChild(this.minimap.el);
+    this.minimap.onClick = (worldX, worldY) => {
+      this.canvas.centerOn(worldX, worldY);
+    };
+    this.canvas.onTransformChange = () => this.renderMinimap();
 
     const { showContextMenu } = setupKeybinds({
       deleteCards: () => this.deleteCards(),
@@ -270,6 +279,7 @@ export class App {
     }
 
     this.renderEdges();
+    this.renderMinimap();
     this.presencePanel.render();
   }
 
@@ -278,6 +288,13 @@ export class App {
       renderPresenceDots(el, this.presence.getPeersOnCard(cardId));
     }
     this.presencePanel.render();
+  }
+
+  private renderMinimap(): void {
+    const cards = this.graph.allCards();
+    const state = this.canvas.getState();
+    const vp = this.canvas.getViewportSize();
+    this.minimap.render(cards, state, vp.width, vp.height);
   }
 
   private renderEdges(): void {

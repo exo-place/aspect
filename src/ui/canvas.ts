@@ -29,6 +29,7 @@ export class Canvas {
   private clickTimer: number | null = null;
 
   events: CanvasEvents | null = null;
+  onTransformChange: (() => void) | null = null;
 
   constructor(container: HTMLElement) {
     this.root = document.createElement("div");
@@ -71,9 +72,15 @@ export class Canvas {
     this.applyTransform();
   }
 
+  getViewportSize(): { width: number; height: number } {
+    const rect = this.root.getBoundingClientRect();
+    return { width: rect.width, height: rect.height };
+  }
+
   private applyTransform(): void {
     this.world.style.transform =
       `translate(${this.state.panX}px, ${this.state.panY}px) scale(${this.state.zoom})`;
+    this.onTransformChange?.();
   }
 
   private bindEvents(): void {
