@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { CardGraph } from "../src/graph";
+import { WorldPackStore } from "../src/pack";
 import { createYDoc } from "../src/ydoc";
+import type { WorldPack } from "../src/pack-types";
 
 describe("CardGraph", () => {
   function makeGraph() {
@@ -312,6 +314,159 @@ describe("CardGraph", () => {
       g2.onChange = () => { called = true; };
       g2.loadJSON(json);
       expect(called).toBe(true);
+    });
+  });
+
+  describe("kind", () => {
+    test("addCard with kind stores kind", () => {
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
+      const card = g.addCard("Room A", { x: 0, y: 0 }, "room");
+      expect(card.kind).toBe("room");
+    });
+
+    test("addCard without kind has no kind", () => {
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
+      const card = g.addCard("Plain", { x: 0, y: 0 });
+      expect(card.kind).toBeUndefined();
+    });
+
+    test("setKind assigns kind", () => {
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
+      const card = g.addCard("X", { x: 0, y: 0 });
+      g.setKind(card.id, "item");
+      expect(g.getCard(card.id)!.kind).toBe("item");
+    });
+
+    test("setKind(null) clears kind", () => {
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
+      const card = g.addCard("X", { x: 0, y: 0 }, "room");
+      g.setKind(card.id, null);
+      expect(g.getCard(card.id)!.kind).toBeUndefined();
+    });
+
+    test("setKind throws for unknown card", () => {
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
+      expect(() => g.setKind("nope", "room")).toThrow("Card not found");
+    });
+  });
+
+  describe("edge type", () => {
+    test("addEdge with type stores type", () => {
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
+      const a = g.addCard("A", { x: 0, y: 0 });
+      const b = g.addCard("B", { x: 1, y: 0 });
+      const edge = g.addEdge(a.id, b.id, "go", "exit");
+      expect(edge.type).toBe("exit");
+      expect(edge.label).toBe("go");
+    });
+
+    test("addEdge without type has no type", () => {
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
+      const a = g.addCard("A", { x: 0, y: 0 });
+      const b = g.addCard("B", { x: 1, y: 0 });
+      const edge = g.addEdge(a.id, b.id);
+      expect(edge.type).toBeUndefined();
+    });
+
+    test("toJSON/loadJSON preserves kind and type", () => {
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
+      const a = g.addCard("Room", { x: 0, y: 0 }, "room");
+      const b = g.addCard("Item", { x: 100, y: 0 }, "item");
+      g.addEdge(a.id, b.id, "contains", "contains");
+
+      const json = g.toJSON();
+      expect(json.cards[a.id].kind).toBe("room");
+      expect(json.cards[b.id].kind).toBe("item");
+      expect(Object.values(json.edges)[0].type).toBe("contains");
+
+      const bundle2 = createYDoc();
+      const g2 = new CardGraph(bundle2);
+      g2.loadJSON(json);
+
+      expect(g2.getCard(a.id)!.kind).toBe("room");
+      expect(g2.getCard(b.id)!.kind).toBe("item");
+      expect(g2.allEdges()[0].type).toBe("contains");
+    });
+  });
+
+  describe("edge type enforcement", () => {
+    const PACK: WorldPack = {
+      packId: "test",
+      packVersion: 1,
+      name: "Test",
+      kinds: [
+        { id: "room", label: "Room" },
+        { id: "item", label: "Item" },
+      ],
+      edgeTypes: [
+        { id: "exit", label: "exit", constraint: { from: ["room"], to: ["room"] } },
+        { id: "link", label: "link" },
+      ],
+    };
+
+    function makeGraphWithPack() {
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
+      const store = new WorldPackStore(bundle);
+      store.load(PACK);
+      g.setPackStore(store);
+      return { g, store };
+    }
+
+    test("valid typed edge succeeds", () => {
+      const { g } = makeGraphWithPack();
+      const a = g.addCard("R1", { x: 0, y: 0 }, "room");
+      const b = g.addCard("R2", { x: 1, y: 0 }, "room");
+      const edge = g.addEdge(a.id, b.id, "north", "exit");
+      expect(edge.type).toBe("exit");
+    });
+
+    test("invalid typed edge throws", () => {
+      const { g } = makeGraphWithPack();
+      const a = g.addCard("R1", { x: 0, y: 0 }, "room");
+      const b = g.addCard("I1", { x: 1, y: 0 }, "item");
+      expect(() => g.addEdge(a.id, b.id, "go", "exit")).toThrow("not allowed");
+    });
+
+    test("untyped edge (no type param) bypasses validation", () => {
+      const { g } = makeGraphWithPack();
+      const a = g.addCard("R1", { x: 0, y: 0 }, "room");
+      const b = g.addCard("I1", { x: 1, y: 0 }, "item");
+      const edge = g.addEdge(a.id, b.id);
+      expect(edge.type).toBeUndefined();
+    });
+
+    test("unconstrained edge type passes any kinds", () => {
+      const { g } = makeGraphWithPack();
+      const a = g.addCard("R1", { x: 0, y: 0 }, "room");
+      const b = g.addCard("I1", { x: 1, y: 0 }, "item");
+      const edge = g.addEdge(a.id, b.id, undefined, "link");
+      expect(edge.type).toBe("link");
+    });
+
+    test("untyped cards pass through constraints", () => {
+      const { g } = makeGraphWithPack();
+      const a = g.addCard("X", { x: 0, y: 0 });
+      const b = g.addCard("Y", { x: 1, y: 0 });
+      const edge = g.addEdge(a.id, b.id, undefined, "exit");
+      expect(edge.type).toBe("exit");
+    });
+
+    test("no pack store means no validation", () => {
+      const bundle = createYDoc();
+      const g = new CardGraph(bundle);
+      const a = g.addCard("R1", { x: 0, y: 0 }, "room");
+      const b = g.addCard("I1", { x: 1, y: 0 }, "item");
+      const edge = g.addEdge(a.id, b.id, "go", "exit");
+      expect(edge.type).toBe("exit");
     });
   });
 });

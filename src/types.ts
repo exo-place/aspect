@@ -7,6 +7,7 @@ export interface Card {
   readonly id: string;
   text: string;
   position: Position;
+  kind?: string;
 }
 
 export interface Edge {
@@ -14,6 +15,7 @@ export interface Edge {
   readonly from: string;
   readonly to: string;
   label?: string;
+  type?: string;
 }
 
 export interface CardGraphData {

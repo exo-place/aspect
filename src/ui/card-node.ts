@@ -1,4 +1,5 @@
 import type { Card } from "../types";
+import type { KindDef } from "../pack-types";
 
 export interface CardNodeEvents {
   onClick(cardId: string, event: PointerEvent): void;
@@ -118,16 +119,42 @@ export function updateCardElement(
   card: Card,
   isCurrent: boolean,
   isSelected: boolean,
+  kindDef?: KindDef,
 ): void {
   if (!el.classList.contains("dragging")) {
     el.style.left = `${card.position.x}px`;
     el.style.top = `${card.position.y}px`;
   }
+
+  // Update text content (preserve editor if open)
   if (!el.querySelector(".card-editor")) {
-    el.textContent = card.text || "(empty)";
+    // Preserve or create kind badge, then set text
+    let badge = el.querySelector(".kind-badge") as HTMLSpanElement | null;
+    if (kindDef?.style?.icon) {
+      if (!badge) {
+        badge = document.createElement("span");
+        badge.className = "kind-badge";
+      }
+      badge.textContent = kindDef.style.icon;
+    } else if (badge) {
+      badge.remove();
+      badge = null;
+    }
+
+    el.textContent = "";
+    if (badge) el.appendChild(badge);
+    el.appendChild(document.createTextNode(card.text || "(empty)"));
   }
+
   el.classList.toggle("current", isCurrent);
   el.classList.toggle("selected", isSelected);
+  el.classList.toggle("has-kind", !!kindDef);
+
+  if (kindDef?.style?.color) {
+    el.style.setProperty("--kind-color", kindDef.style.color);
+  } else {
+    el.style.removeProperty("--kind-color");
+  }
 }
 
 export function startEditing(
@@ -167,4 +194,3 @@ export function startEditing(
     }
   });
 }
-

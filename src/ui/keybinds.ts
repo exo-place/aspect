@@ -11,6 +11,7 @@ import type { Command } from "keybinds";
 export interface KeybindHandlers {
   deleteCard(cardId: string): void;
   editCard(cardId: string): void;
+  setKind(cardId: string): void;
   createCard(worldX: number, worldY: number): void;
   linkCards(): void;
   unlinkCards(): void;
@@ -35,6 +36,11 @@ const schema = defineSchema({
     label: "Delete card",
     category: "Edit",
     keys: ["Backspace", "Delete"],
+  },
+  "set-kind": {
+    label: "Set kind",
+    category: "Edit",
+    keys: ["K"],
   },
   "create-card": {
     label: "Create card",
@@ -126,6 +132,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
     {
       "edit-card": (ctx) => handlers.editCard(ctx.cardId as string),
       "delete-card": (ctx) => handlers.deleteCard(ctx.cardId as string),
+      "set-kind": (ctx) => handlers.setKind(ctx.cardId as string),
       "create-card": (ctx) => {
         if (ctx.worldX != null && ctx.worldY != null) {
           handlers.createCard(ctx.worldX as number, ctx.worldY as number);
@@ -159,6 +166,9 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
         when: (ctx) => ctx.cardId != null && !ctx.isEditing,
       },
       "delete-card": {
+        when: (ctx) => ctx.cardId != null && !ctx.isEditing,
+      },
+      "set-kind": {
         when: (ctx) => ctx.cardId != null && !ctx.isEditing,
       },
       "link-cards": {
@@ -207,6 +217,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
   const menuTags: Record<string, string> = {
     "edit-card": "card",
     "delete-card": "card",
+    "set-kind": "card",
     "create-card": "canvas",
     "link-cards": "card",
     "unlink-cards": "card",

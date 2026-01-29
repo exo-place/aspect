@@ -4,7 +4,7 @@ What exists, what's planned, and what's still open.
 
 ## Implemented
 
-The core graph layer and multiplayer infrastructure are working:
+The core graph layer, multiplayer infrastructure, and world pack foundation are working:
 
 - **Card/edge data model** — `CardGraph` wrapping Y.js `Y.Map` collections from a shared `Y.Doc`
 - **Canvas UI** — infinite canvas with pan, zoom, multi-select, drag repositioning
@@ -23,11 +23,20 @@ The core graph layer and multiplayer infrastructure are working:
 - **Per-client undo/redo** — via `Y.UndoManager`
 - **PWA** — installable, works offline
 - **Context menu** — right-click for card actions
+- **World pack format** — JSON schema for kinds (card types) and edge types with constraints
+- **World pack loader** — `WorldPackStore` wrapping `Y.Map` for CRDT sync and persistence
+- **Card kinds** — cards can be tagged with a kind from the active world pack
+- **Kind-aware rendering** — cards show kind-specific left border accent color and icon badge
+- **Kind assignment UI** — dropdown picker via K key or context menu
+- **Edge types** — edges can carry a type referencing an edge type definition
+- **Edge type enforcement** — `addEdge` validates from/to kind constraints when pack and type are present
+- **Default world pack** — built-in "Rooms & Items" pack (room/item/character + exit/contains/carries)
 
 ## Current Limitations
 
-- **Untyped edges** — edges have labels but no kind/type system; no semantic constraints
-- **No world packs** — all cards and edges are undifferentiated; no kinds, no edge type definitions
+- **No pack validation** — malformed pack JSON is not validated on load
+- **No edge type picker** — edge types must be assigned programmatically, not via UI
+- **No pack import/export UI** — world packs can only be loaded via code, not uploaded
 - **No projection layer** — the only view is the graph editor (builder mode)
 - **No affordance discovery** — no mechanism to derive available actions from structure
 - **No action system** — no declarative when/do language, no compressed graph transformations
@@ -36,19 +45,19 @@ The core graph layer and multiplayer infrastructure are working:
 
 ## Phases
 
-### Phase 1: World Pack Format + Loader
+### Phase 1: World Pack Format + Loader ✓
 
-Define the world pack file format and implement loading:
+Core complete. Kind definitions, edge type definitions, pack loader, CRDT-synced pack storage, kind-aware rendering, edge type enforcement, and default pack all implemented.
 
-- Kind definitions (card types with fields and UI hints)
-- Edge type definitions (from/to constraints, directionality, UI mapping)
-- Pack metadata (packId, packVersion)
-- Runtime loader that interprets pack definitions against the live graph
-- Kind assignment UI (tag a card with a kind from the active world pack)
+Remaining polish:
+- Pack validation (schema checking on load)
+- Pack import/export UI (file upload/download)
+- Edge type picker in edge creation flow
+- Pack info panel (display loaded pack, switch/clear)
 
 ### Phase 2: Action System
 
-Implement the declarative action language:
+Implement the declarative action language. Predicate language: JSONLogic.
 
 - `when` predicate evaluator (kind checks, edge existence, field comparisons)
 - `do` effect executor (addEdge, removeEdge, set, emit)
@@ -58,13 +67,13 @@ Implement the declarative action language:
 
 ### Phase 3: Projection Layer
 
-Build the experiential UI:
+Build the experiential UI. Routing: tabs (graph editor and projection as parallel views).
 
 - Projection renderer that reads world pack UI hints
 - Edge-type-to-panel mapping (exits → navigation, contains → inventory, etc.)
 - Place rendering (current card as location, not as node)
 - Reactive updates from CRDT changes
-- Toggle or route switch between graph editor and projection
+- Tab navigation between graph editor and projection
 
 ### Phase 4: Affordance Discovery
 
@@ -75,11 +84,12 @@ Connect actions to projection:
 - Contextual affordance updates on navigation
 - Affordance grouping and presentation (per-target, per-category)
 
-## Open Questions
+## Resolved Questions
 
-- **World pack file format** — JSON, YAML, or a custom format? JSON is simplest; YAML is more readable; a custom format could be more expressive.
-- **Predicate language** — CEL, JSONLogic, or custom? CEL is proven but complex; JSONLogic is JSON-native; custom allows tighter integration but costs more to implement.
-- **Projection routing** — separate route (`/room/name/projection`) vs toggle within the same view? Routing is cleaner; toggle is more fluid.
-- **World pack distribution** — how are packs shared? Git repos, a registry, inline in the Y.Doc?
-- **Multi-pack composition** — how do multiple world packs interact? Override rules, namespace isolation, or explicit merging?
-- **Migration strategy** — how do graphs adapt when a world pack version changes? Automatic migration, manual upgrade, or dual-version support?
+- **World pack file format** — JSON
+- **Predicate language** — JSONLogic
+- **Projection routing** — Tabs
+- **World pack distribution** — Git repos + registry + inline Y.Doc + file upload
+- **Multi-pack composition** — Merge
+- **Migration on version change** — Warn ("world pack version has changed")
+- **Version history** — Save all world pack versions

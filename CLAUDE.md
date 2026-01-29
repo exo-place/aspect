@@ -21,14 +21,23 @@ Part of the [exo-place ecosystem](https://exo-place.github.io).
 
 ### Core Primitives
 
-- **Card** — atomic unit of existence with text content and edges to other cards
-- **Edge** — directional connection between two cards
+- **Card** — atomic unit of existence with text content, edges, and optional `kind`
+- **Edge** — directional connection between two cards, with optional `type`
 - **Navigate** — move to a connected card along an edge
 - **Edit** — modify the content of the current card
 
+### World Packs
+
+A world pack is a portable JSON definition that gives the graph meaning. Defines **kinds** (card types with icon/color) and **edge types** (relations with from/to kind constraints). Stored in Y.Doc at key `"pack"` via `WorldPackStore`.
+
+Key modules:
+- `src/pack-types.ts` — pure data interfaces (`WorldPack`, `KindDef`, `EdgeTypeDef`)
+- `src/pack.ts` — `WorldPackStore` class (wraps `Y.Map`, CRDT-synced)
+- `src/default-pack.ts` — built-in "Rooms & Items" starter pack
+
 ### Multiplayer
 
-Y.js CRDTs are the source of truth for all card/edge state. `CardGraph` wraps `Y.Map` collections from a shared `Y.Doc`. Persistence uses `y-indexeddb`; real-time sync uses `y-websocket` with a Bun WebSocket server at `/ws/:room`. Undo/redo is per-client via `Y.UndoManager`.
+Y.js CRDTs are the source of truth for all card/edge/pack state. `CardGraph` wraps `Y.Map` collections from a shared `Y.Doc`. Persistence uses `y-indexeddb`; real-time sync uses `y-websocket` with a Bun WebSocket server at `/ws/:room`. Undo/redo is per-client via `Y.UndoManager` (tracks cards, edges, and pack).
 
 ### Design Principles
 

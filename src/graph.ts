@@ -1,6 +1,7 @@
 import * as Y from "yjs";
 import type { Card, CardGraphData, Edge, Position } from "./types";
 import type { YDocBundle } from "./ydoc";
+import type { WorldPackStore } from "./pack";
 import { createId } from "./id";
 
 export type ChangeCallback = () => void;
@@ -9,6 +10,7 @@ export class CardGraph {
   private doc: Y.Doc;
   private cards: Y.Map<Y.Map<unknown>>;
   private edges: Y.Map<Y.Map<unknown>>;
+  private packStore: WorldPackStore | null = null;
 
   onChange: ChangeCallback | null = null;
 
@@ -22,13 +24,18 @@ export class CardGraph {
     });
   }
 
-  addCard(text: string, position: Position): Card {
+  setPackStore(store: WorldPackStore): void {
+    this.packStore = store;
+  }
+
+  addCard(text: string, position: Position, kind?: string): Card {
     const id = createId();
     this.doc.transact(() => {
       const yCard = new Y.Map<unknown>();
       yCard.set("text", text);
       yCard.set("x", position.x);
       yCard.set("y", position.y);
+      if (kind !== undefined) yCard.set("kind", kind);
       this.cards.set(id, yCard);
     });
     return this.materializeCard(id, this.cards.get(id)!);
@@ -53,6 +60,18 @@ export class CardGraph {
     return this.materializeCard(id, yCard);
   }
 
+  setKind(id: string, kind: string | null): void {
+    const yCard = this.cards.get(id);
+    if (!yCard) throw new Error(`Card not found: ${id}`);
+    this.doc.transact(() => {
+      if (kind === null) {
+        yCard.delete("kind");
+      } else {
+        yCard.set("kind", kind);
+      }
+    });
+  }
+
   removeCard(id: string): void {
     if (!this.cards.has(id)) throw new Error(`Card not found: ${id}`);
     this.doc.transact(() => {
@@ -65,17 +84,29 @@ export class CardGraph {
     });
   }
 
-  addEdge(from: string, to: string, label?: string): Edge {
+  addEdge(from: string, to: string, label?: string, type?: string): Edge {
     if (!this.cards.has(from)) throw new Error(`Card not found: ${from}`);
     if (!this.cards.has(to)) throw new Error(`Card not found: ${to}`);
     const existing = this.directEdge(from, to);
     if (existing) return existing;
+
+    if (this.packStore && type !== undefined) {
+      const fromCard = this.getCard(from);
+      const toCard = this.getCard(to);
+      if (!this.packStore.validateEdge(type, fromCard?.kind, toCard?.kind)) {
+        const fk = fromCard?.kind ?? "(none)";
+        const tk = toCard?.kind ?? "(none)";
+        throw new Error("Edge type \"" + type + "\" not allowed between kinds \"" + fk + "\" and \"" + tk + "\"");
+      }
+    }
+
     const id = createId();
     this.doc.transact(() => {
       const yEdge = new Y.Map<unknown>();
       yEdge.set("from", from);
       yEdge.set("to", to);
       if (label !== undefined) yEdge.set("label", label);
+      if (type !== undefined) yEdge.set("type", type);
       this.edges.set(id, yEdge);
     });
     return this.materializeEdge(id, this.edges.get(id)!);
@@ -206,6 +237,7 @@ export class CardGraph {
         yCard.set("text", card.text);
         yCard.set("x", card.position.x);
         yCard.set("y", card.position.y);
+        if (card.kind !== undefined) yCard.set("kind", card.kind);
         this.cards.set(id, yCard);
       }
       for (const [id, edge] of Object.entries(data.edges)) {
@@ -213,13 +245,14 @@ export class CardGraph {
         yEdge.set("from", edge.from);
         yEdge.set("to", edge.to);
         if (edge.label !== undefined) yEdge.set("label", edge.label);
+        if (edge.type !== undefined) yEdge.set("type", edge.type);
         this.edges.set(id, yEdge);
       }
     });
   }
 
   private materializeCard(id: string, yCard: Y.Map<unknown>): Card {
-    return {
+    const card: Card = {
       id,
       text: yCard.get("text") as string,
       position: {
@@ -227,10 +260,16 @@ export class CardGraph {
         y: yCard.get("y") as number,
       },
     };
+    const kind = yCard.get("kind") as string | undefined;
+    if (kind !== undefined) {
+      (card as { kind?: string }).kind = kind;
+    }
+    return card;
   }
 
   private materializeEdge(id: string, yEdge: Y.Map<unknown>): Edge {
     const label = yEdge.get("label") as string | undefined;
+    const type = yEdge.get("type") as string | undefined;
     const edge: Edge = {
       id,
       from: yEdge.get("from") as string,
@@ -238,6 +277,9 @@ export class CardGraph {
     };
     if (label !== undefined) {
       (edge as { label?: string }).label = label;
+    }
+    if (type !== undefined) {
+      (edge as { type?: string }).type = type;
     }
     return edge;
   }

@@ -54,7 +54,7 @@ The UI surface that renders experience as **place**, not as diagram. Projection 
 
 ## What Exists Today
 
-The core graph layer and CRDT multiplayer are implemented:
+The core graph layer, CRDT multiplayer, and Phase 1 world pack support are implemented:
 
 - Card/edge data model with `CardGraph` wrapping Y.js shared types
 - Canvas-based graph editor UI (navigator, inline editor, multi-select)
@@ -65,8 +65,13 @@ The core graph layer and CRDT multiplayer are implemented:
 - Edge labels and directional edges
 - Keyboard navigation, search, command palette
 - Installable PWA with offline support
+- World pack format (JSON) with kind definitions and edge type definitions
+- `WorldPackStore` — CRDT-synced pack storage in `Y.Doc`, undoable
+- Card kind assignment with kind-aware rendering (color accent, icon badge)
+- Edge type enforcement (from/to kind constraints validated on `addEdge`)
+- Default "Rooms & Items" world pack
 
-World packs, the action system, affordance discovery, and the projection layer are planned. See [Roadmap](./roadmap.md) for the full timeline.
+The action system, affordance discovery, and the projection layer are planned. See [Roadmap](./roadmap.md) for the full timeline.
 
 ## Design Constraints
 

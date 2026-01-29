@@ -4,6 +4,8 @@ import { Editor } from "../editor";
 import { Selection } from "../selection";
 import { History } from "../history";
 import type { Presence } from "../presence";
+import type { WorldPackStore } from "../pack";
+import { DEFAULT_PACK } from "../default-pack";
 import { resolveEdgeToggle } from "../edge-toggle";
 import { Canvas } from "./canvas";
 import { createCardElement, updateCardElement, startEditing } from "./card-node";
@@ -13,6 +15,7 @@ import { renderPresenceDots } from "./presence-dots";
 import { PresencePanel } from "./presence-panel";
 import { setupKeybinds } from "./keybinds";
 import { SearchOverlay } from "./search";
+import { showKindPicker } from "./kind-picker";
 import type { YDocBundle } from "../ydoc";
 
 export class App {
@@ -25,13 +28,14 @@ export class App {
   private search: SearchOverlay;
   private presence: Presence;
   private presencePanel: PresencePanel;
+  private packStore: WorldPackStore;
   private cardElements = new Map<string, HTMLDivElement>();
   private edgeElements = new Map<string, SVGGElement>();
   private cardEvents: CardNodeEvents;
   private ghostEdge: SVGLineElement | null = null;
   private ghostEdgeSource: string | null = null;
 
-  constructor(container: HTMLElement, graph: CardGraph, bundle: YDocBundle, presence: Presence) {
+  constructor(container: HTMLElement, graph: CardGraph, bundle: YDocBundle, presence: Presence, packStore: WorldPackStore) {
     this.graph = graph;
     this.navigator = new Navigator(graph);
     this.editor = new Editor(graph);
@@ -39,6 +43,7 @@ export class App {
     this.history = new History(bundle);
     this.canvas = new Canvas(container);
     this.presence = presence;
+    this.packStore = packStore;
     this.presencePanel = new PresencePanel(
       container,
       presence,
@@ -62,6 +67,7 @@ export class App {
     const { showContextMenu } = setupKeybinds({
       deleteCard: (cardId) => this.deleteCard(cardId),
       editCard: (cardId) => this.editCard(cardId),
+      setKind: (cardId) => this.showKindPicker(cardId),
       createCard: (worldX, worldY) => this.createCard(worldX, worldY),
       linkCards: () => this.linkCards(),
       unlinkCards: () => this.unlinkCards(),
@@ -212,6 +218,7 @@ export class App {
     };
     this.selection.onChange = () => this.render();
     this.presence.onChange = () => this.renderPresence();
+    this.packStore.onChange = () => this.render();
   }
 
   get nav(): Navigator {
@@ -232,7 +239,8 @@ export class App {
         this.canvas.cardLayer.appendChild(el);
         this.cardElements.set(card.id, el);
       }
-      updateCardElement(el, card, card.id === currentId, this.selection.has(card.id));
+      const kindDef = card.kind ? this.packStore.getKind(card.kind) : undefined;
+      updateCardElement(el, card, card.id === currentId, this.selection.has(card.id), kindDef);
       renderPresenceDots(el, this.presence.getPeersOnCard(card.id));
     }
     for (const [id, el] of this.cardElements) {
@@ -301,6 +309,28 @@ export class App {
       this.history.capture();
       this.editor.setText(cardId, text);
     });
+  }
+
+  private showKindPicker(cardId: string): void {
+    const cardEl = this.cardElements.get(cardId);
+    if (!cardEl) return;
+    const card = this.graph.getCard(cardId);
+    if (!card) return;
+
+    const pack = this.packStore.get();
+    if (!pack) return;
+
+    const rect = cardEl.getBoundingClientRect();
+    showKindPicker(
+      rect.left,
+      rect.bottom + 4,
+      card.kind,
+      pack.kinds,
+      (kindId) => {
+        this.history.capture();
+        this.graph.setKind(cardId, kindId);
+      },
+    );
   }
 
   private createCard(worldX: number, worldY: number): void {
@@ -462,7 +492,14 @@ export class App {
 
   bootstrap(): void {
     const cards = this.graph.allCards();
-    if (cards.length === 0) {
+    const isEmpty = cards.length === 0;
+
+    // Load default pack when doc has no pack and graph is empty
+    if (!this.packStore.isLoaded && isEmpty) {
+      this.packStore.load(DEFAULT_PACK);
+    }
+
+    if (isEmpty) {
       const start = this.graph.addCard(
         "Double-click empty space to create a card\nClick a card to select it\nDouble-click a card to edit\nRight-click a card for options\nDrag cards to rearrange\nScroll to zoom",
         { x: 0, y: 0 },

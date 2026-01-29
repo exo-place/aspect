@@ -1,5 +1,6 @@
 import { WebsocketProvider } from "y-websocket";
 import { CardGraph } from "./graph";
+import { WorldPackStore } from "./pack";
 import { Presence } from "./presence";
 import { setupPersistence } from "./persistence";
 import { createYDoc } from "./ydoc";
@@ -72,6 +73,8 @@ async function main() {
   await persistence.whenSynced;
 
   const graph = new CardGraph(bundle);
+  const packStore = new WorldPackStore(bundle);
+  graph.setPackStore(packStore);
 
   // Migrate old data if Y.Doc is empty
   if (graph.allCards().length === 0) {
@@ -79,7 +82,7 @@ async function main() {
   }
 
   const presence = new Presence(provider.awareness);
-  const app = new App(container, graph, bundle, presence);
+  const app = new App(container, graph, bundle, presence, packStore);
   app.bootstrap();
 }
 

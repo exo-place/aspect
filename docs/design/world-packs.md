@@ -110,39 +110,77 @@ Each world pack has:
 
 World packs are designed to be shared and distributed independently of the graphs they interpret.
 
-## Example
+## Implemented Format (Phase 1)
 
-A minimal world pack for rooms, items, and identity:
+The implemented world pack format covers kinds and edge types. Actions, rules, and fields are Phase 2+.
+
+```typescript
+interface WorldPack {
+  packId: string;
+  packVersion: number;
+  name: string;
+  description?: string;
+  kinds: KindDef[];
+  edgeTypes: EdgeTypeDef[];
+}
+
+interface KindDef {
+  id: string;
+  label: string;
+  style?: { color?: string; icon?: string };
+}
+
+interface EdgeTypeDef {
+  id: string;
+  label: string;
+  constraint?: { from?: string[]; to?: string[] };
+}
+```
+
+### Default Pack: Rooms & Items
+
+The built-in starter pack shipped with Aspect:
 
 ```json
 {
-  "packId": "example.adventure",
-  "packVersion": "0.1.0",
-  "kinds": {
-    "room": { "fields": {}, "icon": "door", "color": "#4a9" },
-    "item": { "fields": { "wearable": "boolean" }, "icon": "cube", "color": "#a94" },
-    "identity": { "fields": {}, "icon": "user", "color": "#94a" }
-  },
-  "edgeTypes": {
-    "exit": { "from": "room", "to": "room", "ui": "navigation" },
-    "contains": { "from": ["room", "identity"], "to": "item", "ui": "inventory" },
-    "wearing": { "from": "identity", "to": "item", "ui": "equipment" }
-  },
+  "packId": "rooms-and-items",
+  "packVersion": 1,
+  "name": "Rooms & Items",
+  "kinds": [
+    { "id": "room", "label": "Room", "style": { "color": "#56b6c2", "icon": "🏠" } },
+    { "id": "item", "label": "Item", "style": { "color": "#e5c07b", "icon": "📦" } },
+    { "id": "character", "label": "Character", "style": { "color": "#c678dd", "icon": "🧑" } }
+  ],
+  "edgeTypes": [
+    { "id": "exit", "label": "exit", "constraint": { "from": ["room"], "to": ["room"] } },
+    { "id": "contains", "label": "contains", "constraint": { "from": ["room"], "to": ["item", "character"] } },
+    { "id": "carries", "label": "carries", "constraint": { "from": ["character"], "to": ["item"] } }
+  ]
+}
+```
+
+### Storage
+
+World packs are stored in the Y.Doc at key `"pack"` as nested `Y.Map`/`Y.Array` structures, managed by `WorldPackStore`. This means packs sync across multiplayer clients and are undoable via `Y.UndoManager`.
+
+### Edge Type Enforcement
+
+When a `WorldPackStore` is set on `CardGraph`, `addEdge` validates from/to kind constraints if a type is provided. Behavior:
+- No pack → no validation
+- No type on edge → no validation
+- Untyped cards (no kind) pass through constraints
+
+## Future Format (Phase 2+)
+
+Actions will extend the format:
+
+```json
+{
   "actions": {
-    "move": {
-      "context": { "kind": "room" },
-      "target": { "kind": "room", "edge": "exit" },
-      "do": ["set(self, 'location', target.id)"]
-    },
     "take": {
       "target": { "kind": "item" },
       "when": ["edge(here, target, 'contains')"],
       "do": ["removeEdge(here, target, 'contains')", "addEdge(self, target, 'contains')"]
-    },
-    "wear": {
-      "target": { "kind": "item" },
-      "when": ["edge(self, target, 'contains')", "target.fields.wearable == true"],
-      "do": ["removeEdge(self, target, 'contains')", "addEdge(self, target, 'wearing')"]
     }
   }
 }
