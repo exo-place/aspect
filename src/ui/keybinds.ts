@@ -16,6 +16,7 @@ export interface KeybindHandlers {
   unlinkCards(): void;
   labelEdge(): void;
   deselect(): void;
+  search(): void;
   undo(): void;
   redo(): void;
   navigateDirection(direction: "up" | "down" | "left" | "right"): void;
@@ -83,6 +84,11 @@ const schema = defineSchema({
     category: "Navigation",
     keys: ["ArrowRight"],
   },
+  search: {
+    label: "Search cards",
+    category: "Navigation",
+    keys: ["/"],
+  },
   deselect: {
     label: "Deselect",
     category: "Navigation",
@@ -137,6 +143,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       "nav-down": () => handlers.navigateDirection("down"),
       "nav-left": () => handlers.navigateDirection("left"),
       "nav-right": () => handlers.navigateDirection("right"),
+      search: () => handlers.search(),
       deselect: () => handlers.deselect(),
       "command-palette": () => {
         const el = document.querySelector("command-palette");
@@ -181,6 +188,9 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       "nav-right": {
         when: (ctx) => ctx.cardId != null && !ctx.isEditing,
       },
+      search: {
+        when: (ctx) => !ctx.isEditing && !ctx.isSearching,
+      },
       deselect: {
         when: (ctx) => !ctx.isEditing,
       },
@@ -224,6 +234,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
     cardId: handlers.getCurrentCardId(),
     selectedCount: handlers.getSelectedCount(),
     isEditing: !!document.querySelector(".card-editor"),
+    isSearching: !!document.querySelector(".search-overlay"),
   });
 
   const cleanup = keybinds(commands, getContext);

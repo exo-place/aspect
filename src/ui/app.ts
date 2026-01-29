@@ -9,6 +9,7 @@ import { createCardElement, updateCardElement, startEditing } from "./card-node"
 import type { CardNodeEvents } from "./card-node";
 import { createEdgeGroup, updateEdgeGroup, ensureArrowDefs } from "./edge-line";
 import { setupKeybinds } from "./keybinds";
+import { SearchOverlay } from "./search";
 
 export class App {
   private canvas: Canvas;
@@ -17,6 +18,7 @@ export class App {
   private editor: Editor;
   private selection: Selection;
   private history: History;
+  private search: SearchOverlay;
   private cardElements = new Map<string, HTMLDivElement>();
   private edgeElements = new Map<string, SVGGElement>();
   private cardEvents: CardNodeEvents;
@@ -30,6 +32,19 @@ export class App {
     this.selection = new Selection();
     this.history = new History(graph);
     this.canvas = new Canvas(container);
+    this.search = new SearchOverlay(
+      () => this.graph.allCards(),
+      {
+        onJump: (cardId) => {
+          const card = this.graph.getCard(cardId);
+          if (!card) return;
+          this.navigator.jumpTo(cardId);
+          this.selection.set(cardId);
+          this.canvas.centerOn(card.position.x, card.position.y);
+        },
+        onClose: () => {},
+      },
+    );
     ensureArrowDefs(this.canvas.edgeLayer);
 
     const { showContextMenu } = setupKeybinds({
@@ -42,6 +57,7 @@ export class App {
       undo: () => this.history.undo(),
       redo: () => this.history.redo(),
       navigateDirection: (dir) => this.navigateDirection(dir),
+      search: () => this.search.open(),
       deselect: () => {
         this.selection.clear();
         this.navigator.deselect();
