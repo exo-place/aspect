@@ -36,14 +36,14 @@
 - [ ] **Card resize** — cards auto-size to content but allow manual width override
 - [ ] **Touch support** — pinch-to-zoom, tap-to-select, long-press context menu for mobile/tablet
 - [ ] **Accessibility audit** — ARIA roles on cards/edges, keyboard focus management, screen reader labels
-- [ ] **Export/import** — JSON export of full graph state, import to merge or replace
+- [x] **Export/import** — JSON snapshot export/import with validation (`src/snapshot.ts`, `src/file-io.ts`)
 
 ## Phase 1 remaining: world pack polish
 
 Phase 1 core is complete. Remaining polish:
 
-- [ ] **Pack validation** — schema validation on load, clear error messages for malformed packs
-- [ ] **Pack import/export UI** — upload/download world pack JSON files (FS Access API where available)
+- [x] **Pack validation** — `validateWorldPack()` in `src/pack-validate.ts`, gates `WorldPackStore.load()`
+- [x] **Pack import/export UI** — upload/download world pack JSON via command palette + context menu
 - [ ] **Edge type picker** — when creating edges, optionally select edge type from active pack
 - [ ] **Kind-aware edge labels** — auto-populate edge label from edge type label when type is set
 - [ ] **Pack info panel** — display loaded pack name/version, allow switching or clearing pack

@@ -32,8 +32,17 @@ A world pack is a portable JSON definition that gives the graph meaning. Defines
 
 Key modules:
 - `src/pack-types.ts` — pure data interfaces (`WorldPack`, `KindDef`, `EdgeTypeDef`)
-- `src/pack.ts` — `WorldPackStore` class (wraps `Y.Map`, CRDT-synced)
+- `src/pack.ts` — `WorldPackStore` class (wraps `Y.Map`, CRDT-synced, validates on load)
+- `src/pack-validate.ts` — `validateWorldPack()` schema validator (structure, uniqueness, referential integrity)
 - `src/default-pack.ts` — built-in "Rooms & Items" starter pack
+
+### Snapshots
+
+Full graph state can be exported/imported as JSON files (`AspectSnapshot` format: version, graph data, world pack).
+
+Key modules:
+- `src/snapshot.ts` — export, validate, replace-import, merge-import
+- `src/file-io.ts` — `downloadJSON()` / `uploadJSON()` browser file helpers
 
 ### Multiplayer
 
