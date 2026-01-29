@@ -367,19 +367,14 @@ export class App {
   }
 
   private unlinkCards(): void {
-    const selected = this.selection.toArray();
-    if (selected.length < 2) return;
+    const currentId = this.navigator.current?.id;
+    if (!currentId) return;
+    const selected = this.selection.toArray().filter((id) => id !== currentId);
+    if (selected.length === 0) return;
     this.history.capture();
-    const toRemove: string[] = [];
-    for (let i = 0; i < selected.length; i++) {
-      for (let j = i + 1; j < selected.length; j++) {
-        for (const edge of this.graph.allEdgesBetween(selected[i], selected[j])) {
-          toRemove.push(edge.id);
-        }
-      }
-    }
-    for (const id of toRemove) {
-      this.graph.removeEdge(id);
+    for (const targetId of selected) {
+      const edge = this.graph.directEdge(currentId, targetId);
+      if (edge) this.graph.removeEdge(edge.id);
     }
   }
 
