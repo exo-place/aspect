@@ -8,80 +8,78 @@ export interface CardNodeEvents {
   onDragEnd(cardId: string): void;
 }
 
-export function renderCard(
-  card: Card,
-  currentId: string | null,
-  container: HTMLElement,
+export function createCardElement(
+  cardId: string,
   events: CardNodeEvents,
-  zoom: number,
+  getZoom: () => number,
 ): HTMLDivElement {
   const el = document.createElement("div");
   el.className = "card";
-  el.dataset.cardId = card.id;
-  if (card.id === currentId) el.classList.add("current");
-
-  el.style.left = `${card.position.x}px`;
-  el.style.top = `${card.position.y}px`;
-  el.textContent = card.text || "(empty)";
+  el.dataset.cardId = cardId;
 
   let isDragging = false;
   let dragStartX = 0;
   let dragStartY = 0;
-  let cardOriginX = card.position.x;
-  let cardOriginY = card.position.y;
-  let clickTimer: ReturnType<typeof setTimeout> | null = null;
+  let cardOriginX = 0;
+  let cardOriginY = 0;
 
   el.addEventListener("pointerdown", (e) => {
     e.stopPropagation();
     isDragging = true;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
-    cardOriginX = card.position.x;
-    cardOriginY = card.position.y;
+    cardOriginX = parseFloat(el.style.left);
+    cardOriginY = parseFloat(el.style.top);
     el.classList.add("dragging");
     el.setPointerCapture(e.pointerId);
-    events.onDragStart(card.id);
+    events.onDragStart(cardId);
   });
 
   el.addEventListener("pointermove", (e) => {
     if (!isDragging) return;
+    const zoom = getZoom();
     const dx = (e.clientX - dragStartX) / zoom;
     const dy = (e.clientY - dragStartY) / zoom;
-    const newX = cardOriginX + dx;
-    const newY = cardOriginY + dy;
-    el.style.left = `${newX}px`;
-    el.style.top = `${newY}px`;
-    events.onDrag(card.id, newX, newY);
+    el.style.left = `${cardOriginX + dx}px`;
+    el.style.top = `${cardOriginY + dy}px`;
+    events.onDrag(cardId, cardOriginX + dx, cardOriginY + dy);
   });
 
   el.addEventListener("pointerup", (e) => {
     if (!isDragging) return;
     isDragging = false;
     el.classList.remove("dragging");
+    const zoom = getZoom();
     const dx = (e.clientX - dragStartX) / zoom;
     const dy = (e.clientY - dragStartY) / zoom;
     if (Math.abs(dx) < 3 && Math.abs(dy) < 3) {
-      // Delay click so dblclick can cancel it
-      clickTimer = setTimeout(() => {
-        clickTimer = null;
-        events.onClick(card.id);
-      }, 200);
+      events.onClick(cardId);
     } else {
-      events.onDragEnd(card.id);
+      events.onDragEnd(cardId);
     }
   });
 
   el.addEventListener("dblclick", (e) => {
     e.stopPropagation();
-    if (clickTimer !== null) {
-      clearTimeout(clickTimer);
-      clickTimer = null;
-    }
-    events.onDoubleClick(card.id, el);
+    events.onDoubleClick(cardId, el);
   });
 
-  container.appendChild(el);
   return el;
+}
+
+export function updateCardElement(
+  el: HTMLDivElement,
+  card: Card,
+  isCurrent: boolean,
+): void {
+  if (!el.classList.contains("dragging")) {
+    el.style.left = `${card.position.x}px`;
+    el.style.top = `${card.position.y}px`;
+  }
+  if (!el.querySelector(".card-editor")) {
+    el.textContent = card.text || "(empty)";
+  }
+  el.classList.toggle("current", isCurrent);
 }
 
 export function startEditing(
@@ -89,6 +87,8 @@ export function startEditing(
   currentText: string,
   onCommit: (text: string) => void,
 ): void {
+  if (cardEl.querySelector(".card-editor")) return;
+
   cardEl.textContent = "";
   const textarea = document.createElement("textarea");
   textarea.className = "card-editor";
@@ -101,7 +101,10 @@ export function startEditing(
   const commit = () => {
     if (committed) return;
     committed = true;
-    onCommit(textarea.value);
+    const text = textarea.value;
+    textarea.remove();
+    cardEl.textContent = text || "(empty)";
+    onCommit(text);
   };
 
   textarea.addEventListener("blur", commit);

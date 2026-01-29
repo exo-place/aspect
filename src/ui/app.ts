@@ -2,22 +2,50 @@ import { CardGraph } from "../graph";
 import { Navigator } from "../navigator";
 import { Editor } from "../editor";
 import { Canvas } from "./canvas";
-import { renderCard, startEditing } from "./card-node";
+import { createCardElement, updateCardElement, startEditing } from "./card-node";
 import type { CardNodeEvents } from "./card-node";
-import { renderEdge } from "./edge-line";
+import { createEdgeLine, updateEdgeLine } from "./edge-line";
 
 export class App {
   private canvas: Canvas;
   private graph: CardGraph;
   private navigator: Navigator;
   private editor: Editor;
-  private suppressRender = false;
+  private cardElements = new Map<string, HTMLDivElement>();
+  private edgeElements = new Map<string, SVGLineElement>();
+  private cardEvents: CardNodeEvents;
 
   constructor(container: HTMLElement, graph: CardGraph) {
     this.graph = graph;
     this.navigator = new Navigator(graph);
     this.editor = new Editor(graph);
     this.canvas = new Canvas(container);
+
+    this.cardEvents = {
+      onClick: (cardId) => {
+        this.navigator.jumpTo(cardId);
+      },
+      onDoubleClick: (cardId, element) => {
+        const card = this.graph.getCard(cardId);
+        if (!card) return;
+        startEditing(element, card.text, (text) => {
+          this.editor.setText(cardId, text);
+        });
+      },
+      onDragStart: () => {},
+      onDrag: () => {
+        this.renderEdges();
+      },
+      onDragEnd: (cardId) => {
+        const el = this.cardElements.get(cardId);
+        if (el) {
+          this.editor.setPosition(cardId, {
+            x: parseFloat(el.style.left),
+            y: parseFloat(el.style.top),
+          });
+        }
+      },
+    };
 
     this.canvas.events = {
       onDoubleClickEmpty: (worldX, worldY) => {
@@ -27,28 +55,17 @@ export class App {
           this.graph.addEdge(current.id, card.id);
         }
         this.navigator.jumpTo(card.id);
-        this.render();
-        // Start editing the new card immediately
-        const cardEl = this.canvas.cardLayer.querySelector(
-          `[data-card-id="${card.id}"]`,
-        ) as HTMLDivElement | null;
+        const cardEl = this.cardElements.get(card.id);
         if (cardEl) {
           startEditing(cardEl, "", (text) => {
             this.editor.setText(card.id, text);
-            this.render();
           });
         }
       },
     };
 
-    this.graph.onChange = () => {
-      if (!this.suppressRender) this.render();
-    };
-    this.navigator.onNavigate = () => {
-      if (!this.suppressRender) this.render();
-    };
-
-    this.render();
+    this.graph.onChange = () => this.render();
+    this.navigator.onNavigate = () => this.render();
   }
 
   get nav(): Navigator {
@@ -56,69 +73,55 @@ export class App {
   }
 
   render(): void {
-    const { cardLayer, edgeLayer } = this.canvas;
-    cardLayer.innerHTML = "";
-    edgeLayer.innerHTML = "";
-
     const currentId = this.navigator.current?.id ?? null;
     const allCards = this.graph.allCards();
+
+    // Reconcile cards
+    const activeCardIds = new Set<string>();
+    for (const card of allCards) {
+      activeCardIds.add(card.id);
+      let el = this.cardElements.get(card.id);
+      if (!el) {
+        el = createCardElement(card.id, this.cardEvents, () => this.canvas.getState().zoom);
+        this.canvas.cardLayer.appendChild(el);
+        this.cardElements.set(card.id, el);
+      }
+      updateCardElement(el, card, card.id === currentId);
+    }
+    for (const [id, el] of this.cardElements) {
+      if (!activeCardIds.has(id)) {
+        el.remove();
+        this.cardElements.delete(id);
+      }
+    }
+
+    this.renderEdges();
+  }
+
+  private renderEdges(): void {
+    const currentId = this.navigator.current?.id ?? null;
     const allEdges = this.graph.allEdges();
 
-    // Build cards lookup for edge rendering
-    const cardsMap: Record<string, typeof allCards[0]> = {};
-    for (const card of allCards) {
-      cardsMap[card.id] = card;
-    }
-
-    // Render edges first (below cards)
+    const activeEdgeIds = new Set<string>();
     for (const edge of allEdges) {
-      renderEdge(edge, cardsMap, currentId, edgeLayer);
+      activeEdgeIds.add(edge.id);
+      let line = this.edgeElements.get(edge.id);
+      if (!line) {
+        line = createEdgeLine();
+        this.canvas.edgeLayer.appendChild(line);
+        this.edgeElements.set(edge.id, line);
+      }
+      const fromEl = this.cardElements.get(edge.from);
+      const toEl = this.cardElements.get(edge.to);
+      if (fromEl && toEl) {
+        updateEdgeLine(line, fromEl, toEl, edge.from === currentId || edge.to === currentId);
+      }
     }
-
-    // Render cards
-    const cardEvents: CardNodeEvents = {
-      onClick: (cardId) => {
-        this.navigator.jumpTo(cardId);
-        this.render();
-      },
-      onDoubleClick: (cardId, element) => {
-        const card = this.graph.getCard(cardId);
-        if (!card) return;
-        startEditing(element, card.text, (text) => {
-          this.editor.setText(cardId, text);
-          this.render();
-        });
-      },
-      onDragStart: () => {
-        this.suppressRender = true;
-      },
-      onDrag: (_cardId, worldX, worldY) => {
-        // Update edges visually without committing to graph
-        edgeLayer.innerHTML = "";
-        const tempMap: Record<string, typeof allCards[0]> = {};
-        for (const c of this.graph.allCards()) {
-          tempMap[c.id] = c.id === _cardId
-            ? { ...c, position: { x: worldX, y: worldY } }
-            : c;
-        }
-        for (const edge of allEdges) {
-          renderEdge(edge, tempMap, currentId, edgeLayer);
-        }
-      },
-      onDragEnd: (cardId) => {
-        const el = cardLayer.querySelector(`[data-card-id="${cardId}"]`) as HTMLElement | null;
-        this.suppressRender = false;
-        if (el) {
-          const x = parseFloat(el.style.left);
-          const y = parseFloat(el.style.top);
-          this.editor.setPosition(cardId, { x, y });
-        }
-      },
-    };
-
-    const zoom = this.canvas.getState().zoom;
-    for (const card of allCards) {
-      renderCard(card, currentId, cardLayer, cardEvents, zoom);
+    for (const [id, el] of this.edgeElements) {
+      if (!activeEdgeIds.has(id)) {
+        el.remove();
+        this.edgeElements.delete(id);
+      }
     }
   }
 
@@ -132,6 +135,5 @@ export class App {
       this.navigator.jumpTo(cards[0].id);
       this.canvas.centerOn(cards[0].position.x, cards[0].position.y);
     }
-    this.render();
   }
 }
