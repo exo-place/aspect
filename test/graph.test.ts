@@ -166,6 +166,38 @@ describe("CardGraph", () => {
       expect(g.allEdgesBetween(a.id, b.id)).toHaveLength(0);
     });
 
+    test("directEdge finds forward edge only", () => {
+      const { g, a, b } = makeGraph();
+      const edge = g.addEdge(a.id, b.id);
+      expect(g.directEdge(a.id, b.id)).toBe(edge);
+      expect(g.directEdge(b.id, a.id)).toBeUndefined();
+    });
+
+    test("addEdge returns existing on duplicate", () => {
+      const { g, a, b } = makeGraph();
+      const edge1 = g.addEdge(a.id, b.id);
+      const edge2 = g.addEdge(a.id, b.id);
+      expect(edge2).toBe(edge1);
+      expect(g.allEdges()).toHaveLength(1);
+    });
+
+    test("addEdge does not fire onChange on duplicate", () => {
+      const { g, a, b } = makeGraph();
+      g.addEdge(a.id, b.id);
+      let called = false;
+      g.onChange = () => { called = true; };
+      g.addEdge(a.id, b.id);
+      expect(called).toBe(false);
+    });
+
+    test("addEdge allows both directions as separate edges", () => {
+      const { g, a, b } = makeGraph();
+      const ab = g.addEdge(a.id, b.id);
+      const ba = g.addEdge(b.id, a.id);
+      expect(ab.id).not.toBe(ba.id);
+      expect(g.allEdges()).toHaveLength(2);
+    });
+
     test("updateEdge sets label", () => {
       const { g, a, b } = makeGraph();
       const edge = g.addEdge(a.id, b.id);

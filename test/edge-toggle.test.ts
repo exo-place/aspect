@@ -73,6 +73,26 @@ describe("resolveEdgeToggle", () => {
     });
   });
 
+  describe("directional callback", () => {
+    test("does not detect reverse edge with directional check", () => {
+      // Only B→A exists, checking A→B directionally
+      const edges = [{ from: "B", to: "A" }];
+      const hasDirectEdge = (a: string, b: string) =>
+        edges.some((e) => e.from === a && e.to === b);
+      const result = resolveEdgeToggle("A", ["B"], hasDirectEdge);
+      expect(result).toBe("link");
+    });
+
+    test("detects forward edge with directional check", () => {
+      // A→B exists, checking A→B directionally
+      const edges = [{ from: "A", to: "B" }];
+      const hasDirectEdge = (a: string, b: string) =>
+        edges.some((e) => e.from === a && e.to === b);
+      const result = resolveEdgeToggle("A", ["B"], hasDirectEdge);
+      expect(result).toBe("unlink");
+    });
+  });
+
   describe("empty targets", () => {
     test("returns link for empty target list", () => {
       const result = resolveEdgeToggle("A", [], () => true);

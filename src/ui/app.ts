@@ -6,7 +6,7 @@ import { resolveEdgeToggle } from "../edge-toggle";
 import { Canvas } from "./canvas";
 import { createCardElement, updateCardElement, startEditing } from "./card-node";
 import type { CardNodeEvents } from "./card-node";
-import { createEdgeGroup, updateEdgeGroup } from "./edge-line";
+import { createEdgeGroup, updateEdgeGroup, ensureArrowDefs } from "./edge-line";
 import { setupKeybinds } from "./keybinds";
 
 export class App {
@@ -27,6 +27,7 @@ export class App {
     this.editor = new Editor(graph);
     this.selection = new Selection();
     this.canvas = new Canvas(container);
+    ensureArrowDefs(this.canvas.edgeLayer);
 
     const { showContextMenu } = setupKeybinds({
       deleteCard: (cardId) => this.deleteCard(cardId),
@@ -84,6 +85,7 @@ export class App {
         this.ghostEdgeSource = sourceCardId;
         const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
         line.classList.add("edge-line", "ghost");
+        line.setAttribute("marker-end", "url(#arrow-ghost)");
         this.canvas.edgeLayer.appendChild(line);
         this.ghostEdge = line;
       },
@@ -137,20 +139,17 @@ export class App {
         const targetArr = [...targets];
         const action = resolveEdgeToggle(
           sourceCardId, targetArr,
-          (a, b) => !!this.graph.edgeBetween(a, b),
+          (a, b) => !!this.graph.directEdge(a, b),
         );
 
         if (action === "link") {
           for (const targetId of targetArr) {
-            if (!this.graph.edgeBetween(sourceCardId, targetId)) {
-              this.graph.addEdge(sourceCardId, targetId);
-            }
+            this.graph.addEdge(sourceCardId, targetId);
           }
         } else {
           for (const targetId of targetArr) {
-            for (const edge of this.graph.allEdgesBetween(sourceCardId, targetId)) {
-              this.graph.removeEdge(edge.id);
-            }
+            const edge = this.graph.directEdge(sourceCardId, targetId);
+            if (edge) this.graph.removeEdge(edge.id);
           }
         }
       },
@@ -208,6 +207,18 @@ export class App {
     const currentId = this.navigator.current?.id ?? null;
     const allEdges = this.graph.allEdges();
 
+    // Detect paired edges (A→B and B→A both exist)
+    const edgeKeys = new Set<string>();
+    for (const edge of allEdges) {
+      edgeKeys.add(`${edge.from}:${edge.to}`);
+    }
+    const pairedKeys = new Set<string>();
+    for (const edge of allEdges) {
+      if (edgeKeys.has(`${edge.to}:${edge.from}`)) {
+        pairedKeys.add(`${edge.from}:${edge.to}`);
+      }
+    }
+
     const activeEdgeIds = new Set<string>();
     for (const edge of allEdges) {
       activeEdgeIds.add(edge.id);
@@ -220,7 +231,8 @@ export class App {
       const fromEl = this.cardElements.get(edge.from);
       const toEl = this.cardElements.get(edge.to);
       if (fromEl && toEl) {
-        updateEdgeGroup(group, fromEl, toEl, edge.from === currentId || edge.to === currentId, edge.label);
+        const isPaired = pairedKeys.has(`${edge.from}:${edge.to}`);
+        updateEdgeGroup(group, fromEl, toEl, edge.from === currentId || edge.to === currentId, edge.label, undefined, isPaired ? 8 : 0);
       }
     }
     for (const [id, el] of this.edgeElements) {
@@ -271,9 +283,7 @@ export class App {
     const selected = this.selection.toArray().filter((id) => id !== currentId);
     if (selected.length === 0) return;
     for (const targetId of selected) {
-      if (!this.graph.edgeBetween(currentId, targetId)) {
-        this.graph.addEdge(currentId, targetId);
-      }
+      this.graph.addEdge(currentId, targetId);
     }
   }
 

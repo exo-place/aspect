@@ -53,6 +53,7 @@ html, body {
 .edge-line {
   stroke: #555;
   stroke-width: 2;
+  fill: none;
 }
 
 .edge-line.connected {

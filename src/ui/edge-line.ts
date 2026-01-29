@@ -2,6 +2,35 @@ const SVG_NS = "http://www.w3.org/2000/svg";
 
 export type EdgeStyle = "line" | "spline" | "taxicab" | "rounded-taxicab";
 
+export function ensureArrowDefs(svg: SVGSVGElement): void {
+  if (svg.querySelector("defs")) return;
+  const defs = document.createElementNS(SVG_NS, "defs");
+
+  const markers: [string, string][] = [
+    ["arrow", "#555"],
+    ["arrow-connected", "#888"],
+    ["arrow-ghost", "rgba(124,156,255,0.5)"],
+  ];
+
+  for (const [id, fill] of markers) {
+    const marker = document.createElementNS(SVG_NS, "marker");
+    marker.setAttribute("id", id);
+    marker.setAttribute("viewBox", "0 0 10 6");
+    marker.setAttribute("refX", "10");
+    marker.setAttribute("refY", "3");
+    marker.setAttribute("markerWidth", "10");
+    marker.setAttribute("markerHeight", "6");
+    marker.setAttribute("orient", "auto-start-reverse");
+    const polygon = document.createElementNS(SVG_NS, "polygon");
+    polygon.setAttribute("points", "0,0 10,3 0,6");
+    polygon.setAttribute("fill", fill);
+    marker.appendChild(polygon);
+    defs.appendChild(marker);
+  }
+
+  svg.insertBefore(defs, svg.firstChild);
+}
+
 export function createEdgeGroup(): SVGGElement {
   const g = document.createElementNS(SVG_NS, "g");
   const path = document.createElementNS(SVG_NS, "path");
@@ -98,6 +127,7 @@ export function updateEdgeGroup(
   isConnected: boolean,
   label?: string,
   style: EdgeStyle = "spline",
+  perpOffset: number = 0,
 ): void {
   const fromX = parseFloat(fromEl.style.left) || 0;
   const fromY = parseFloat(fromEl.style.top) || 0;
@@ -114,15 +144,30 @@ export function updateEdgeGroup(
   const toCx = toX + thw;
   const toCy = toY + thh;
 
-  const from = borderPoint(fromCx, fromCy, fhw, fhh, toCx, toCy);
-  const to = borderPoint(toCx, toCy, thw, thh, fromCx, fromCy);
+  // Compute perpendicular offset for parallel edges
+  let offX = 0;
+  let offY = 0;
+  if (perpOffset !== 0) {
+    const ddx = toCx - fromCx;
+    const ddy = toCy - fromCy;
+    const len = Math.sqrt(ddx * ddx + ddy * ddy);
+    if (len > 0) {
+      // Perpendicular: rotate direction 90° CCW
+      offX = (-ddy / len) * perpOffset;
+      offY = (ddx / len) * perpOffset;
+    }
+  }
 
-  const fromDir = exitDirection(fromCx, fromCy, fhw, fhh, from.x, from.y);
-  const toDir = exitDirection(toCx, toCy, thw, thh, to.x, to.y);
+  const from = borderPoint(fromCx + offX, fromCy + offY, fhw, fhh, toCx + offX, toCy + offY);
+  const to = borderPoint(toCx + offX, toCy + offY, thw, thh, fromCx + offX, fromCy + offY);
+
+  const fromDir = exitDirection(fromCx + offX, fromCy + offY, fhw, fhh, from.x, from.y);
+  const toDir = exitDirection(toCx + offX, toCy + offY, thw, thh, to.x, to.y);
 
   const path = group.querySelector("path") as SVGPathElement;
   path.setAttribute("d", buildPath(from, to, fromDir, toDir, style));
   path.classList.toggle("connected", isConnected);
+  path.setAttribute("marker-end", `url(#${isConnected ? "arrow-connected" : "arrow"})`);
 
   const text = group.querySelector("text") as SVGTextElement;
   if (label) {

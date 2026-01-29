@@ -43,6 +43,8 @@ export class CardGraph {
   addEdge(from: string, to: string, label?: string): Edge {
     if (!this.cards.has(from)) throw new Error(`Card not found: ${from}`);
     if (!this.cards.has(to)) throw new Error(`Card not found: ${to}`);
+    const existing = this.directEdge(from, to);
+    if (existing) return existing;
     const edge: Edge = { id: createId(), from, to, label };
     this.edges.set(edge.id, edge);
     this.notify();
@@ -61,6 +63,13 @@ export class CardGraph {
     if (!this.edges.has(id)) throw new Error(`Edge not found: ${id}`);
     this.edges.delete(id);
     this.notify();
+  }
+
+  directEdge(from: string, to: string): Edge | undefined {
+    for (const edge of this.edges.values()) {
+      if (edge.from === from && edge.to === to) return edge;
+    }
+    return undefined;
   }
 
   edgeBetween(a: string, b: string): Edge | undefined {
