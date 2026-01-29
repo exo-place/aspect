@@ -4,6 +4,7 @@ import {
   fromBindings,
   registerComponents,
   formatKeyParts,
+  BindingsStore,
 } from "keybinds";
 import type { Command } from "keybinds";
 
@@ -59,7 +60,14 @@ const schema = defineSchema({
     category: "General",
     keys: ["$mod+K"],
   },
+  "keybind-settings": {
+    label: "Keyboard shortcuts",
+    category: "General",
+    keys: ["$mod+,"],
+  },
 });
+
+const store = new BindingsStore(schema, "aspect:keybinds");
 
 export interface SetupResult {
   cleanup: () => void;
@@ -75,7 +83,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
   registerComponents();
 
   const commands: Command[] = fromBindings(
-    schema,
+    store.get(),
     {
       "edit-card": (ctx) => handlers.editCard(ctx.cardId as string),
       "delete-card": (ctx) => handlers.deleteCard(ctx.cardId as string),
@@ -93,6 +101,10 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       deselect: () => handlers.deselect(),
       "command-palette": () => {
         const el = document.querySelector("command-palette");
+        if (el) (el as HTMLElement & { open: boolean }).open = !((el as HTMLElement & { open: boolean }).open);
+      },
+      "keybind-settings": () => {
+        const el = document.querySelector("keybind-settings");
         if (el) (el as HTMLElement & { open: boolean }).open = !((el as HTMLElement & { open: boolean }).open);
       },
     },
@@ -116,6 +128,9 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
         when: (ctx) => !ctx.isEditing,
       },
       "command-palette": {
+        captureInput: true,
+      },
+      "keybind-settings": {
         captureInput: true,
       },
     },
@@ -143,6 +158,10 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
   cheatsheet.setAttribute("auto-trigger", "");
   (cheatsheet as unknown as { commands: Command[] }).commands = commands;
   document.body.appendChild(cheatsheet);
+
+  const settings = document.createElement("keybind-settings");
+  (settings as unknown as { store: BindingsStore }).store = store;
+  document.body.appendChild(settings);
 
   const getContext = () => ({
     cardId: handlers.getCurrentCardId(),
