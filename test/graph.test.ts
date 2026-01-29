@@ -78,6 +78,21 @@ describe("CardGraph", () => {
       const { g } = makeGraph();
       expect(g.allCards()).toHaveLength(3);
     });
+
+    test("removeCards deletes multiple cards and their edges atomically", () => {
+      const { g, a, b, c } = makeGraph();
+      g.addEdge(a.id, b.id);
+      g.addEdge(b.id, c.id);
+      g.addEdge(a.id, c.id);
+      let changeCount = 0;
+      g.onChange = () => { changeCount++; };
+      g.removeCards([a.id, b.id]);
+      expect(g.getCard(a.id)).toBeUndefined();
+      expect(g.getCard(b.id)).toBeUndefined();
+      expect(g.getCard(c.id)).toBeDefined();
+      expect(g.allEdges()).toHaveLength(0);
+      expect(changeCount).toBe(1);
+    });
   });
 
   describe("edges", () => {

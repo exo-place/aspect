@@ -68,7 +68,7 @@ export class App {
     ensureArrowDefs(this.canvas.edgeLayer);
 
     const { showContextMenu } = setupKeybinds({
-      deleteCard: (cardId) => this.deleteCard(cardId),
+      deleteCards: () => this.deleteCards(),
       editCard: (cardId) => this.editCard(cardId),
       setKind: (cardId) => this.showKindPicker(cardId),
       createCard: (worldX, worldY) => this.createCard(worldX, worldY),
@@ -356,12 +356,29 @@ export class App {
     }
   }
 
-  private deleteCard(cardId: string): void {
+  private deleteCards(): void {
+    const ids = new Set(this.selection.toArray());
+    const currentId = this.navigator.current?.id;
+    if (currentId) ids.add(currentId);
+    if (ids.size === 0) return;
+
+    // Find a surviving neighbor before deletion
+    let survivor: string | null = null;
+    for (const id of ids) {
+      for (const neighbor of this.graph.neighbors(id)) {
+        if (!ids.has(neighbor.id)) {
+          survivor = neighbor.id;
+          break;
+        }
+      }
+      if (survivor) break;
+    }
+
     this.history.capture();
-    const neighbors = this.graph.neighbors(cardId);
-    this.graph.removeCard(cardId);
-    if (neighbors.length > 0) {
-      this.navigator.jumpTo(neighbors[0].id);
+    this.graph.removeCards([...ids]);
+    this.selection.clear();
+    if (survivor) {
+      this.navigator.jumpTo(survivor);
     } else {
       this.navigator.deselect();
     }

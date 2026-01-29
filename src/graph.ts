@@ -84,6 +84,20 @@ export class CardGraph {
     });
   }
 
+  removeCards(ids: string[]): void {
+    const idSet = new Set(ids);
+    this.doc.transact(() => {
+      for (const [edgeId, yEdge] of this.edges) {
+        if (idSet.has(yEdge.get("from") as string) || idSet.has(yEdge.get("to") as string)) {
+          this.edges.delete(edgeId);
+        }
+      }
+      for (const id of idSet) {
+        this.cards.delete(id);
+      }
+    });
+  }
+
   addEdge(from: string, to: string, label?: string, type?: string): Edge {
     if (!this.cards.has(from)) throw new Error(`Card not found: ${from}`);
     if (!this.cards.has(to)) throw new Error(`Card not found: ${to}`);

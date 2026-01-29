@@ -9,7 +9,7 @@ import {
 import type { Command } from "keybinds";
 
 export interface KeybindHandlers {
-  deleteCard(cardId: string): void;
+  deleteCards(): void;
   editCard(cardId: string): void;
   setKind(cardId: string): void;
   createCard(worldX: number, worldY: number): void;
@@ -153,7 +153,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
     store.get(),
     {
       "edit-card": (ctx) => handlers.editCard(ctx.cardId as string),
-      "delete-card": (ctx) => handlers.deleteCard(ctx.cardId as string),
+      "delete-card": () => handlers.deleteCards(),
       "set-kind": (ctx) => handlers.setKind(ctx.cardId as string),
       "create-card": (ctx) => {
         if (ctx.worldX != null && ctx.worldY != null) {
@@ -192,7 +192,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
         when: (ctx) => ctx.cardId != null && !ctx.isEditing,
       },
       "delete-card": {
-        when: (ctx) => ctx.cardId != null && !ctx.isEditing,
+        when: (ctx) => (ctx.cardId != null || (ctx.selectedCount as number) > 0) && !ctx.isEditing,
       },
       "set-kind": {
         when: (ctx) => ctx.cardId != null && !ctx.isEditing,
