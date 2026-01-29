@@ -1,0 +1,20 @@
+{
+  "name": "aspect",
+  "version": "0.0.1",
+  "description": "Card-based identity exploration sandbox",
+  "module": "src/index.ts",
+  "type": "module",
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "check:types": "tsgo --noEmit",
+    "lint": "oxlint",
+    "test": "bun test"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@typescript/native-preview": "^7.0.0-dev.20260124.1",
+    "oxlint": "latest"
+  }
+}
