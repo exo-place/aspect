@@ -1,12 +1,15 @@
 import type { Card } from "../types";
 
 export interface CardNodeEvents {
-  onClick(cardId: string): void;
+  onClick(cardId: string, event: PointerEvent): void;
   onDoubleClick(cardId: string, element: HTMLDivElement): void;
   onContextMenu(cardId: string, screenX: number, screenY: number): void;
   onDragStart(cardId: string): void;
   onDrag(cardId: string, worldX: number, worldY: number): void;
   onDragEnd(cardId: string): void;
+  onEdgeDragStart?(sourceCardId: string): void;
+  onEdgeDragMove?(sourceCardId: string, screenX: number, screenY: number): void;
+  onEdgeDragEnd?(sourceCardId: string, screenX: number, screenY: number): void;
 }
 
 export function createCardElement(
@@ -19,6 +22,7 @@ export function createCardElement(
   el.dataset.cardId = cardId;
 
   let isDragging = false;
+  let isEdgeDragging = false;
   let dragStartX = 0;
   let dragStartY = 0;
   let cardOriginX = 0;
@@ -27,18 +31,28 @@ export function createCardElement(
   el.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
     e.stopPropagation();
-    isDragging = true;
     dragStartX = e.clientX;
     dragStartY = e.clientY;
-    cardOriginX = parseFloat(el.style.left);
-    cardOriginY = parseFloat(el.style.top);
-    el.classList.add("dragging");
-    el.parentNode?.appendChild(el);
     el.setPointerCapture(e.pointerId);
-    events.onDragStart(cardId);
+
+    if (e.shiftKey && events.onEdgeDragStart) {
+      isEdgeDragging = true;
+      events.onEdgeDragStart(cardId);
+    } else {
+      isDragging = true;
+      cardOriginX = parseFloat(el.style.left);
+      cardOriginY = parseFloat(el.style.top);
+      el.classList.add("dragging");
+      el.parentNode?.appendChild(el);
+      events.onDragStart(cardId);
+    }
   });
 
   el.addEventListener("pointermove", (e) => {
+    if (isEdgeDragging) {
+      events.onEdgeDragMove?.(cardId, e.clientX, e.clientY);
+      return;
+    }
     if (!isDragging) return;
     const zoom = getZoom();
     const dx = (e.clientX - dragStartX) / zoom;
@@ -49,6 +63,11 @@ export function createCardElement(
   });
 
   el.addEventListener("pointerup", (e) => {
+    if (isEdgeDragging) {
+      isEdgeDragging = false;
+      events.onEdgeDragEnd?.(cardId, e.clientX, e.clientY);
+      return;
+    }
     if (!isDragging) return;
     isDragging = false;
     el.classList.remove("dragging");
@@ -56,7 +75,7 @@ export function createCardElement(
     const dx = (e.clientX - dragStartX) / zoom;
     const dy = (e.clientY - dragStartY) / zoom;
     if (Math.abs(dx) < 3 && Math.abs(dy) < 3) {
-      events.onClick(cardId);
+      events.onClick(cardId, e);
     } else {
       events.onDragEnd(cardId);
     }
@@ -80,6 +99,7 @@ export function updateCardElement(
   el: HTMLDivElement,
   card: Card,
   isCurrent: boolean,
+  isSelected: boolean,
 ): void {
   if (!el.classList.contains("dragging")) {
     el.style.left = `${card.position.x}px`;
@@ -89,6 +109,7 @@ export function updateCardElement(
     el.textContent = card.text || "(empty)";
   }
   el.classList.toggle("current", isCurrent);
+  el.classList.toggle("selected", isSelected);
 }
 
 export function startEditing(

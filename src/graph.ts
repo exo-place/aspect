@@ -49,6 +49,14 @@ export class CardGraph {
     return edge;
   }
 
+  updateEdge(id: string, label: string): Edge {
+    const edge = this.edges.get(id);
+    if (!edge) throw new Error(`Edge not found: ${id}`);
+    edge.label = label || undefined;
+    this.notify();
+    return edge;
+  }
+
   removeEdge(id: string): void {
     if (!this.edges.has(id)) throw new Error(`Edge not found: ${id}`);
     this.edges.delete(id);

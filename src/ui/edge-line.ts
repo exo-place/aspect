@@ -1,5 +1,19 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
 
+export type EdgeStyle = "line" | "spline" | "taxicab" | "rounded-taxicab";
+
+export function createEdgeGroup(): SVGGElement {
+  const g = document.createElementNS(SVG_NS, "g");
+  const path = document.createElementNS(SVG_NS, "path");
+  path.classList.add("edge-line");
+  const text = document.createElementNS(SVG_NS, "text");
+  text.classList.add("edge-label");
+  g.appendChild(path);
+  g.appendChild(text);
+  return g;
+}
+
+// Keep for ghost edge creation
 export function createEdgeLine(): SVGLineElement {
   const line = document.createElementNS(SVG_NS, "line");
   line.classList.add("edge-line");
@@ -20,11 +34,70 @@ function borderPoint(
   return { x: cx + dx * s, y: cy + dy * s };
 }
 
-export function updateEdgeLine(
-  line: SVGLineElement,
+function exitDirection(
+  cx: number, cy: number,
+  hw: number, hh: number,
+  bx: number, by: number,
+): { dx: number; dy: number } {
+  const dx = bx - cx;
+  const dy = by - cy;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len === 0) return { dx: 0, dy: -1 };
+  return { dx: dx / len, dy: dy / len };
+}
+
+function buildPath(
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  fromDir: { dx: number; dy: number },
+  toDir: { dx: number; dy: number },
+  style: EdgeStyle,
+): string {
+  switch (style) {
+    case "line":
+      return `M ${from.x},${from.y} L ${to.x},${to.y}`;
+
+    case "spline": {
+      const dist = Math.sqrt((to.x - from.x) ** 2 + (to.y - from.y) ** 2);
+      const offset = dist * 0.3;
+      const cp1x = from.x + fromDir.dx * offset;
+      const cp1y = from.y + fromDir.dy * offset;
+      const cp2x = to.x + toDir.dx * offset;
+      const cp2y = to.y + toDir.dy * offset;
+      return `M ${from.x},${from.y} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${to.x},${to.y}`;
+    }
+
+    case "taxicab": {
+      const mx = (from.x + to.x) / 2;
+      return `M ${from.x},${from.y} L ${mx},${from.y} L ${mx},${to.y} L ${to.x},${to.y}`;
+    }
+
+    case "rounded-taxicab": {
+      const mx = (from.x + to.x) / 2;
+      const r = 8;
+      const dy1 = to.y > from.y ? 1 : -1;
+      const dx2 = to.x > from.x ? 1 : -1;
+      const ry = Math.min(r, Math.abs(to.y - from.y) / 2);
+      const rx = Math.min(r, Math.abs(mx - from.x), Math.abs(to.x - mx));
+      return [
+        `M ${from.x},${from.y}`,
+        `L ${mx - rx * dx2},${from.y}`,
+        `A ${rx},${ry} 0 0 ${dy1 > 0 ? (dx2 > 0 ? 1 : 0) : (dx2 > 0 ? 0 : 1)} ${mx},${from.y + ry * dy1}`,
+        `L ${mx},${to.y - ry * dy1}`,
+        `A ${rx},${ry} 0 0 ${dy1 > 0 ? (dx2 > 0 ? 0 : 1) : (dx2 > 0 ? 1 : 0)} ${mx + rx * dx2},${to.y}`,
+        `L ${to.x},${to.y}`,
+      ].join(" ");
+    }
+  }
+}
+
+export function updateEdgeGroup(
+  group: SVGGElement,
   fromEl: HTMLElement,
   toEl: HTMLElement,
   isConnected: boolean,
+  label?: string,
+  style: EdgeStyle = "spline",
 ): void {
   const fromX = parseFloat(fromEl.style.left) || 0;
   const fromY = parseFloat(fromEl.style.top) || 0;
@@ -44,9 +117,21 @@ export function updateEdgeLine(
   const from = borderPoint(fromCx, fromCy, fhw, fhh, toCx, toCy);
   const to = borderPoint(toCx, toCy, thw, thh, fromCx, fromCy);
 
-  line.setAttribute("x1", String(from.x));
-  line.setAttribute("y1", String(from.y));
-  line.setAttribute("x2", String(to.x));
-  line.setAttribute("y2", String(to.y));
-  line.classList.toggle("connected", isConnected);
+  const fromDir = exitDirection(fromCx, fromCy, fhw, fhh, from.x, from.y);
+  const toDir = exitDirection(toCx, toCy, thw, thh, to.x, to.y);
+
+  const path = group.querySelector("path") as SVGPathElement;
+  path.setAttribute("d", buildPath(from, to, fromDir, toDir, style));
+  path.classList.toggle("connected", isConnected);
+
+  const text = group.querySelector("text") as SVGTextElement;
+  if (label) {
+    const mx = (from.x + to.x) / 2;
+    const my = (from.y + to.y) / 2;
+    text.setAttribute("x", String(mx));
+    text.setAttribute("y", String(my - 6));
+    text.textContent = label;
+  } else {
+    text.textContent = "";
+  }
 }

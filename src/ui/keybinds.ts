@@ -11,8 +11,11 @@ export interface KeybindHandlers {
   deleteCard(cardId: string): void;
   editCard(cardId: string): void;
   createCard(worldX: number, worldY: number): void;
+  linkCards(): void;
+  labelEdge(): void;
   deselect(): void;
   getCurrentCardId(): string | null;
+  getSelectedCount(): number;
   getViewportCenter(): { x: number; y: number };
 }
 
@@ -29,6 +32,15 @@ const schema = defineSchema({
   },
   "create-card": {
     label: "Create card",
+    category: "Edit",
+  },
+  "link-cards": {
+    label: "Link cards",
+    category: "Edit",
+    keys: ["$mod+L"],
+  },
+  "label-edge": {
+    label: "Label edge",
     category: "Edit",
   },
   deselect: {
@@ -69,6 +81,8 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
           handlers.createCard(center.x, center.y);
         }
       },
+      "link-cards": () => handlers.linkCards(),
+      "label-edge": () => handlers.labelEdge(),
       deselect: () => handlers.deselect(),
       "command-palette": () => {
         const el = document.querySelector("command-palette");
@@ -81,6 +95,12 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       },
       "delete-card": {
         when: (ctx) => ctx.cardId != null && !ctx.isEditing,
+      },
+      "link-cards": {
+        when: (ctx) => (ctx.selectedCount as number) >= 2 && !ctx.isEditing,
+      },
+      "label-edge": {
+        when: (ctx) => (ctx.selectedCount as number) === 2 && !ctx.isEditing,
       },
       deselect: {
         when: (ctx) => !ctx.isEditing,
@@ -96,6 +116,8 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
     "edit-card": "card",
     "delete-card": "card",
     "create-card": "canvas",
+    "link-cards": "card",
+    "label-edge": "card",
   };
   for (const cmd of commands) {
     const menu = menuTags[cmd.id];
@@ -113,6 +135,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
 
   const getContext = () => ({
     cardId: handlers.getCurrentCardId(),
+    selectedCount: handlers.getSelectedCount(),
     isEditing: !!document.querySelector(".card-editor"),
   });
 

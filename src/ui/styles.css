@@ -59,6 +59,38 @@ html, body {
   stroke: #888;
 }
 
+.edge-line.ghost {
+  stroke: #7c9cff;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.edge-label {
+  fill: #aaa;
+  font-size: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+.edge-label-editor {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  background: #1a1a1a;
+  border: 1px solid #555;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 8px;
+  outline: none;
+  z-index: 20;
+  min-width: 60px;
+  text-align: center;
+}
+
 .card {
   position: absolute;
   width: max-content;
@@ -79,6 +111,11 @@ html, body {
 
 .card:hover {
   border-color: #555;
+}
+
+.card.selected {
+  border-color: #5a7acc;
+  box-shadow: 0 0 8px rgba(90, 122, 204, 0.2);
 }
 
 .card.current {
