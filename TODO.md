@@ -53,12 +53,16 @@ Phase 1 core is complete. Remaining polish:
 
 Declarative when/do language for compressed graph transformations. Predicate language: **JSONLogic**.
 
-- [ ] **Action schema** — extend world pack format with action definitions (context, target, when, do)
-- [ ] **Predicate evaluator** — evaluate `when` preconditions against graph state (kind checks, edge existence, field comparisons)
-- [ ] **Effect executor** — execute `do` effects as atomic graph mutations (addEdge, removeEdge, set, emit)
-- [ ] **Action-Y.js integration** — wrap action execution in Y.js transactions (atomic, undoable)
-- [ ] **Event log** — record emitted events with timestamps and actor identity
-- [ ] **Action tests** — unit tests for predicate evaluation, effect execution, atomicity guarantees
+- [x] **Action schema** — `ActionDef` in `src/action-types.ts`, `actions?` on `WorldPack`
+- [x] **JSONLogic evaluator** — own implementation in `src/json-logic.ts` (no dependencies)
+- [x] **Pack validation** — action validation in `src/pack-validate.ts` (structure, uniqueness, referential integrity)
+- [x] **Pack store** — action serialization/deserialization in `src/pack.ts` (CRDT-synced via `Y.Array<Y.Map>`)
+- [x] **Predicate evaluator** — `isActionAvailable()` in `src/action.ts` (kind check → edge type check → JSONLogic)
+- [x] **Effect executor** — `executeAction()` in `src/action.ts` (addEdge, removeEdge, setKind, setText, emit)
+- [x] **Action-Y.js integration** — `graph.transact()` wrapper, effects atomic and undoable
+- [x] **Event log** — `EventLog` in `src/event-log.ts` (CRDT-synced `Y.Array`, append-only)
+- [x] **Default pack actions** — "pick-up" and "drop" actions in `src/default-pack.ts`
+- [x] **Action tests** — 308 tests across json-logic, action, event-log, pack-validate, pack
 
 ## Phase 3: projection layer
 

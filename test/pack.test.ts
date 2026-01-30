@@ -288,6 +288,107 @@ describe("WorldPackStore", () => {
     });
   });
 
+  describe("actions", () => {
+    const PACK_WITH_ACTIONS: WorldPack = {
+      ...TEST_PACK,
+      actions: [
+        {
+          id: "grab",
+          label: "Grab",
+          description: "Pick something up",
+          context: { kind: "room" },
+          target: { kind: "item", edgeType: "contains", direction: "from" },
+          when: { "===": [{ var: "context.kind" }, "room"] },
+          do: [
+            { type: "addEdge", from: "context", to: "target", edgeType: "contains" },
+            { type: "emit", event: "grabbed" },
+          ],
+        },
+        {
+          id: "drop",
+          label: "Drop",
+          context: {},
+          target: {},
+          do: [
+            { type: "removeEdge", from: "context", to: "target" },
+          ],
+        },
+      ],
+    };
+
+    test("load and get round-trips actions", () => {
+      const { store } = makeStore();
+      store.load(PACK_WITH_ACTIONS);
+      const pack = store.get()!;
+      expect(pack.actions).toHaveLength(2);
+      expect(pack.actions![0].id).toBe("grab");
+      expect(pack.actions![0].label).toBe("Grab");
+      expect(pack.actions![0].description).toBe("Pick something up");
+      expect(pack.actions![0].context.kind).toBe("room");
+      expect(pack.actions![0].target.edgeType).toBe("contains");
+      expect(pack.actions![0].target.direction).toBe("from");
+      expect(pack.actions![0].when).toEqual({ "===": [{ var: "context.kind" }, "room"] });
+      expect(pack.actions![0].do).toHaveLength(2);
+      expect(pack.actions![1].id).toBe("drop");
+    });
+
+    test("getAction returns action by id", () => {
+      const { store } = makeStore();
+      store.load(PACK_WITH_ACTIONS);
+      const action = store.getAction("grab");
+      expect(action).toBeDefined();
+      expect(action!.label).toBe("Grab");
+      expect(action!.description).toBe("Pick something up");
+    });
+
+    test("getAction returns undefined for unknown id", () => {
+      const { store } = makeStore();
+      store.load(PACK_WITH_ACTIONS);
+      expect(store.getAction("nonexistent")).toBeUndefined();
+    });
+
+    test("getAction returns undefined when no pack loaded", () => {
+      const { store } = makeStore();
+      expect(store.getAction("grab")).toBeUndefined();
+    });
+
+    test("pack without actions has no actions property", () => {
+      const { store } = makeStore();
+      store.load(TEST_PACK);
+      const pack = store.get()!;
+      expect(pack.actions).toBeUndefined();
+    });
+
+    test("actions CRDT sync between docs", () => {
+      const bundle1 = createYDoc();
+      const bundle2 = createYDoc();
+      const store1 = new WorldPackStore(bundle1);
+      const store2 = new WorldPackStore(bundle2);
+
+      store1.load(PACK_WITH_ACTIONS);
+
+      const update = Y.encodeStateAsUpdate(bundle1.doc);
+      Y.applyUpdate(bundle2.doc, update);
+
+      const pack = store2.get()!;
+      expect(pack.actions).toHaveLength(2);
+      expect(pack.actions![0].id).toBe("grab");
+    });
+
+    test("load → get → JSON.stringify → JSON.parse → load preserves actions", () => {
+      const { store } = makeStore();
+      store.load(PACK_WITH_ACTIONS);
+      const json = JSON.stringify(store.get());
+      const parsed = JSON.parse(json);
+      const { store: store2 } = makeStore();
+      store2.load(parsed);
+      const result = store2.get()!;
+      expect(result.actions).toHaveLength(2);
+      expect(result.actions![0].when).toEqual(PACK_WITH_ACTIONS.actions![0].when);
+      expect(result.actions![0].do).toEqual(PACK_WITH_ACTIONS.actions![0].do);
+    });
+  });
+
   describe("default pack", () => {
     test("DEFAULT_PACK loads successfully", () => {
       const { store } = makeStore();
@@ -297,6 +398,7 @@ describe("WorldPackStore", () => {
       expect(pack.packId).toBe("rooms-and-items");
       expect(pack.kinds).toHaveLength(3);
       expect(pack.edgeTypes).toHaveLength(3);
+      expect(pack.actions).toHaveLength(2);
     });
   });
 });

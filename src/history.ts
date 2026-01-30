@@ -10,7 +10,7 @@ export class History {
 
   constructor(bundle: YDocBundle, options: HistoryOptions = {}) {
     const { captureTimeout = 500 } = options;
-    this.undoManager = new Y.UndoManager([bundle.cards, bundle.edges, bundle.pack], {
+    this.undoManager = new Y.UndoManager([bundle.cards, bundle.edges, bundle.pack, bundle.events], {
       captureTimeout,
     });
   }

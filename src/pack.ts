@@ -6,6 +6,7 @@ import type {
   EdgeTypeDef,
   KindStyle,
 } from "./pack-types";
+import type { ActionDef } from "./action-types";
 import { validateWorldPack } from "./pack-validate";
 
 export type PackChangeCallback = () => void;
@@ -77,6 +78,24 @@ export class WorldPackStore {
     };
     const description = this.packMap.get("description") as string | undefined;
     if (description !== undefined) pack.description = description;
+
+    const yActions = this.packMap.get("actions") as Y.Array<Y.Map<unknown>> | undefined;
+    if (yActions && yActions.length > 0) {
+      const actions: ActionDef[] = [];
+      for (const yAction of yActions) {
+        actions.push({
+          id: yAction.get("id") as string,
+          label: yAction.get("label") as string,
+          ...(yAction.get("description") !== undefined ? { description: yAction.get("description") as string } : {}),
+          context: JSON.parse(yAction.get("context") as string),
+          target: JSON.parse(yAction.get("target") as string),
+          ...(yAction.get("when") !== undefined ? { when: JSON.parse(yAction.get("when") as string) } : {}),
+          do: JSON.parse(yAction.get("do") as string),
+        });
+      }
+      pack.actions = actions;
+    }
+
     return pack;
   }
 
@@ -118,6 +137,22 @@ export class WorldPackStore {
         yEdgeTypes.push([yET]);
       }
       this.packMap.set("edgeTypes", yEdgeTypes);
+
+      if (pack.actions && pack.actions.length > 0) {
+        const yActions = new Y.Array<Y.Map<unknown>>();
+        for (const action of pack.actions) {
+          const yAction = new Y.Map<unknown>();
+          yAction.set("id", action.id);
+          yAction.set("label", action.label);
+          if (action.description !== undefined) yAction.set("description", action.description);
+          yAction.set("context", JSON.stringify(action.context));
+          yAction.set("target", JSON.stringify(action.target));
+          if (action.when !== undefined) yAction.set("when", JSON.stringify(action.when));
+          yAction.set("do", JSON.stringify(action.do));
+          yActions.push([yAction]);
+        }
+        this.packMap.set("actions", yActions);
+      }
     });
   }
 
@@ -177,6 +212,25 @@ export class WorldPackStore {
       ids.push(yKind.get("id") as string);
     }
     return ids;
+  }
+
+  getAction(id: string): ActionDef | undefined {
+    const yActions = this.packMap.get("actions") as Y.Array<Y.Map<unknown>> | undefined;
+    if (!yActions) return undefined;
+    for (const yAction of yActions) {
+      if (yAction.get("id") === id) {
+        return {
+          id: yAction.get("id") as string,
+          label: yAction.get("label") as string,
+          ...(yAction.get("description") !== undefined ? { description: yAction.get("description") as string } : {}),
+          context: JSON.parse(yAction.get("context") as string),
+          target: JSON.parse(yAction.get("target") as string),
+          ...(yAction.get("when") !== undefined ? { when: JSON.parse(yAction.get("when") as string) } : {}),
+          do: JSON.parse(yAction.get("do") as string),
+        };
+      }
+    }
+    return undefined;
   }
 
   validateEdge(typeId: string, fromKind?: string, toKind?: string): boolean {

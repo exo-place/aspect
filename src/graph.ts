@@ -348,6 +348,10 @@ export class CardGraph {
     return edge;
   }
 
+  transact(fn: () => void): void {
+    this.doc.transact(fn);
+  }
+
   private notify(): void {
     this.onChange?.();
   }

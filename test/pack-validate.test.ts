@@ -377,6 +377,218 @@ describe("validateWorldPack", () => {
     });
   });
 
+  describe("actions", () => {
+    test("accepts pack with no actions", () => {
+      const result = validateWorldPack(VALID_PACK);
+      expect(result.valid).toBe(true);
+    });
+
+    test("accepts pack with valid actions", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [
+          {
+            id: "test-action",
+            label: "Test",
+            context: { kind: "room" },
+            target: { kind: "item", edgeType: "exit" },
+            do: [
+              { type: "addEdge", from: "context", to: "target", edgeType: "exit" },
+              { type: "emit", event: "tested" },
+            ],
+          },
+        ],
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    test("accepts DEFAULT_PACK with actions", () => {
+      const result = validateWorldPack(DEFAULT_PACK);
+      expect(result.valid).toBe(true);
+    });
+
+    test("rejects non-array actions", () => {
+      const result = validateWorldPack({ ...VALID_PACK, actions: "bad" });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions")).toBe(true);
+      }
+    });
+
+    test("rejects action with missing id", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ label: "Test", context: {}, target: {}, do: [] }],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions[0].id")).toBe(true);
+      }
+    });
+
+    test("rejects action with missing label", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ id: "test", context: {}, target: {}, do: [] }],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions[0].label")).toBe(true);
+      }
+    });
+
+    test("rejects action with missing context", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ id: "test", label: "Test", target: {}, do: [] }],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions[0].context")).toBe(true);
+      }
+    });
+
+    test("rejects action with missing target", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ id: "test", label: "Test", context: {}, do: [] }],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions[0].target")).toBe(true);
+      }
+    });
+
+    test("rejects action with missing do", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ id: "test", label: "Test", context: {}, target: {} }],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions[0].do")).toBe(true);
+      }
+    });
+
+    test("rejects context.kind referencing unknown kind", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ id: "test", label: "Test", context: { kind: "alien" }, target: {}, do: [] }],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions[0].context.kind" && e.message.includes("alien"))).toBe(true);
+      }
+    });
+
+    test("rejects target.kind referencing unknown kind", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ id: "test", label: "Test", context: {}, target: { kind: "alien" }, do: [] }],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions[0].target.kind" && e.message.includes("alien"))).toBe(true);
+      }
+    });
+
+    test("rejects target.edgeType referencing unknown edge type", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ id: "test", label: "Test", context: {}, target: { edgeType: "warp" }, do: [] }],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions[0].target.edgeType" && e.message.includes("warp"))).toBe(true);
+      }
+    });
+
+    test("rejects invalid target.direction", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ id: "test", label: "Test", context: {}, target: { direction: "sideways" }, do: [] }],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions[0].target.direction")).toBe(true);
+      }
+    });
+
+    test("rejects duplicate action IDs", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [
+          { id: "dup", label: "A", context: {}, target: {}, do: [] },
+          { id: "dup", label: "B", context: {}, target: {}, do: [] },
+        ],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.message.includes("Duplicate action ID"))).toBe(true);
+      }
+    });
+
+    test("rejects unknown effect type", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ id: "test", label: "Test", context: {}, target: {}, do: [{ type: "explode" }] }],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions[0].do[0].type" && e.message.includes("explode"))).toBe(true);
+      }
+    });
+
+    test("rejects addEdge with invalid card refs", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ id: "test", label: "Test", context: {}, target: {}, do: [
+          { type: "addEdge", from: "invalid", to: "context" },
+        ] }],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions[0].do[0].from")).toBe(true);
+      }
+    });
+
+    test("rejects setKind with unknown kind", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ id: "test", label: "Test", context: {}, target: {}, do: [
+          { type: "setKind", card: "context", kind: "alien" },
+        ] }],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions[0].do[0].kind" && e.message.includes("alien"))).toBe(true);
+      }
+    });
+
+    test("accepts setKind with null kind", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ id: "test", label: "Test", context: {}, target: {}, do: [
+          { type: "setKind", card: "context", kind: null },
+        ] }],
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    test("rejects emit with empty event name", () => {
+      const result = validateWorldPack({
+        ...VALID_PACK,
+        actions: [{ id: "test", label: "Test", context: {}, target: {}, do: [
+          { type: "emit", event: "" },
+        ] }],
+      });
+      expect(result.valid).toBe(false);
+      if (!result.valid) {
+        expect(result.errors.some((e) => e.path === "actions[0].do[0].event")).toBe(true);
+      }
+    });
+  });
+
   describe("error path formatting", () => {
     test("paths include array indices", () => {
       const result = validateWorldPack({

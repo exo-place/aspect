@@ -5,6 +5,7 @@ export interface YDocBundle {
   cards: Y.Map<Y.Map<unknown>>;
   edges: Y.Map<Y.Map<unknown>>;
   pack: Y.Map<unknown>;
+  events: Y.Array<Y.Map<unknown>>;
 }
 
 export function createYDoc(): YDocBundle {
@@ -12,5 +13,6 @@ export function createYDoc(): YDocBundle {
   const cards = doc.getMap("cards") as Y.Map<Y.Map<unknown>>;
   const edges = doc.getMap("edges") as Y.Map<Y.Map<unknown>>;
   const pack = doc.getMap("pack") as Y.Map<unknown>;
-  return { doc, cards, edges, pack };
+  const events = doc.getArray("events") as Y.Array<Y.Map<unknown>>;
+  return { doc, cards, edges, pack, events };
 }

@@ -14,4 +14,40 @@ export const DEFAULT_PACK: WorldPack = {
     { id: "contains", label: "contains", constraint: { from: ["room"], to: ["item", "character"] } },
     { id: "carries", label: "carries", constraint: { from: ["character"], to: ["item"] } },
   ],
+  actions: [
+    {
+      id: "pick-up",
+      label: "Pick Up",
+      description: "Character picks up an item from a shared room",
+      context: { kind: "character" },
+      target: { kind: "item" },
+      when: {
+        and: [
+          { some: [
+            { var: "sharedNeighbors" },
+            { "===": [{ var: "kind" }, "room"] },
+          ] },
+          { none: [
+            { var: "edgesFromContextToTarget" },
+            { "===": [{ var: "type" }, "carries"] },
+          ] },
+        ],
+      },
+      do: [
+        { type: "addEdge", from: "context", to: "target", edgeType: "carries" },
+        { type: "emit", event: "picked-up" },
+      ],
+    },
+    {
+      id: "drop",
+      label: "Drop",
+      description: "Character drops a carried item into the current room",
+      context: { kind: "character" },
+      target: { kind: "item", edgeType: "carries" },
+      do: [
+        { type: "removeEdge", from: "context", to: "target", edgeType: "carries" },
+        { type: "emit", event: "dropped" },
+      ],
+    },
+  ],
 };

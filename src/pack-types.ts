@@ -27,4 +27,5 @@ export interface WorldPack {
   description?: string;
   kinds: KindDef[];
   edgeTypes: EdgeTypeDef[];
+  actions?: import("./action-types").ActionDef[];
 }

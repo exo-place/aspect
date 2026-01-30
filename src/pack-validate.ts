@@ -141,9 +141,168 @@ export function validateWorldPack(input: unknown): PackValidationResult {
     }
   }
 
+  // Validate actions (optional)
+  if (obj.actions !== undefined) {
+    if (!Array.isArray(obj.actions)) {
+      errors.push({ path: "actions", message: "Must be an array if provided" });
+    } else {
+      const actions = obj.actions as unknown[];
+      const actionIds = new Set<string>();
+      for (let i = 0; i < actions.length; i++) {
+        const prefix = `actions[${i}]`;
+        const a = actions[i];
+        if (typeof a !== "object" || a === null || Array.isArray(a)) {
+          errors.push({ path: prefix, message: "Must be an object" });
+          continue;
+        }
+        const action = a as Record<string, unknown>;
+        if (typeof action.id !== "string" || action.id === "") {
+          errors.push({ path: `${prefix}.id`, message: "Must be a non-empty string" });
+        }
+        if (typeof action.label !== "string" || action.label === "") {
+          errors.push({ path: `${prefix}.label`, message: "Must be a non-empty string" });
+        }
+        if (action.description !== undefined && typeof action.description !== "string") {
+          errors.push({ path: `${prefix}.description`, message: "Must be a string if provided" });
+        }
+
+        // context
+        if (typeof action.context !== "object" || action.context === null || Array.isArray(action.context)) {
+          errors.push({ path: `${prefix}.context`, message: "Must be an object" });
+        } else {
+          const ctx = action.context as Record<string, unknown>;
+          if (ctx.kind !== undefined) {
+            if (typeof ctx.kind !== "string") {
+              errors.push({ path: `${prefix}.context.kind`, message: "Must be a string if provided" });
+            } else if (!kindIds.has(ctx.kind)) {
+              errors.push({ path: `${prefix}.context.kind`, message: `References unknown kind "${ctx.kind}"` });
+            }
+          }
+        }
+
+        // target
+        if (typeof action.target !== "object" || action.target === null || Array.isArray(action.target)) {
+          errors.push({ path: `${prefix}.target`, message: "Must be an object" });
+        } else {
+          const tgt = action.target as Record<string, unknown>;
+          if (tgt.kind !== undefined) {
+            if (typeof tgt.kind !== "string") {
+              errors.push({ path: `${prefix}.target.kind`, message: "Must be a string if provided" });
+            } else if (!kindIds.has(tgt.kind)) {
+              errors.push({ path: `${prefix}.target.kind`, message: `References unknown kind "${tgt.kind}"` });
+            }
+          }
+          if (tgt.edgeType !== undefined) {
+            if (typeof tgt.edgeType !== "string") {
+              errors.push({ path: `${prefix}.target.edgeType`, message: "Must be a string if provided" });
+            } else if (!edgeTypeIds.has(tgt.edgeType)) {
+              errors.push({ path: `${prefix}.target.edgeType`, message: `References unknown edge type "${tgt.edgeType}"` });
+            }
+          }
+          if (tgt.direction !== undefined && tgt.direction !== "from" && tgt.direction !== "to") {
+            errors.push({ path: `${prefix}.target.direction`, message: 'Must be "from" or "to" if provided' });
+          }
+        }
+
+        // do (effects)
+        if (!Array.isArray(action.do)) {
+          errors.push({ path: `${prefix}.do`, message: "Must be an array" });
+        } else {
+          validateEffects(action.do as unknown[], prefix, kindIds, edgeTypeIds, errors);
+        }
+
+        // uniqueness
+        if (typeof action.id === "string" && action.id !== "") {
+          if (actionIds.has(action.id)) {
+            errors.push({ path: `${prefix}.id`, message: `Duplicate action ID "${action.id}"` });
+          }
+          actionIds.add(action.id);
+        }
+      }
+    }
+  }
+
   if (errors.length > 0) {
     return { valid: false, errors };
   }
 
   return { valid: true, pack: input as WorldPack };
+}
+
+function validateEffects(
+  effects: unknown[],
+  actionPrefix: string,
+  kindIds: Set<string>,
+  edgeTypeIds: Set<string>,
+  errors: PackValidationError[],
+): void {
+  for (let j = 0; j < effects.length; j++) {
+    const ePrefix = `${actionPrefix}.do[${j}]`;
+    const eff = effects[j];
+    if (typeof eff !== "object" || eff === null || Array.isArray(eff)) {
+      errors.push({ path: ePrefix, message: "Must be an object" });
+      continue;
+    }
+    const effect = eff as Record<string, unknown>;
+    const type = effect.type;
+    if (typeof type !== "string") {
+      errors.push({ path: `${ePrefix}.type`, message: "Must be a string" });
+      continue;
+    }
+    switch (type) {
+      case "addEdge":
+      case "removeEdge":
+        if (!isCardRef(effect.from)) {
+          errors.push({ path: `${ePrefix}.from`, message: 'Must be "context" or "target"' });
+        }
+        if (!isCardRef(effect.to)) {
+          errors.push({ path: `${ePrefix}.to`, message: 'Must be "context" or "target"' });
+        }
+        if (effect.edgeType !== undefined) {
+          if (typeof effect.edgeType !== "string") {
+            errors.push({ path: `${ePrefix}.edgeType`, message: "Must be a string if provided" });
+          } else if (!edgeTypeIds.has(effect.edgeType)) {
+            errors.push({ path: `${ePrefix}.edgeType`, message: `References unknown edge type "${effect.edgeType}"` });
+          }
+        }
+        if (type === "addEdge" && effect.label !== undefined && typeof effect.label !== "string") {
+          errors.push({ path: `${ePrefix}.label`, message: "Must be a string if provided" });
+        }
+        break;
+      case "setKind":
+        if (!isCardRef(effect.card)) {
+          errors.push({ path: `${ePrefix}.card`, message: 'Must be "context" or "target"' });
+        }
+        if (effect.kind !== null && typeof effect.kind !== "string") {
+          errors.push({ path: `${ePrefix}.kind`, message: "Must be a string or null" });
+        } else if (typeof effect.kind === "string" && !kindIds.has(effect.kind)) {
+          errors.push({ path: `${ePrefix}.kind`, message: `References unknown kind "${effect.kind}"` });
+        }
+        break;
+      case "setText":
+        if (!isCardRef(effect.card)) {
+          errors.push({ path: `${ePrefix}.card`, message: 'Must be "context" or "target"' });
+        }
+        if (typeof effect.text !== "string") {
+          errors.push({ path: `${ePrefix}.text`, message: "Must be a string" });
+        }
+        break;
+      case "emit":
+        if (typeof effect.event !== "string" || effect.event === "") {
+          errors.push({ path: `${ePrefix}.event`, message: "Must be a non-empty string" });
+        }
+        if (effect.data !== undefined) {
+          if (typeof effect.data !== "object" || effect.data === null || Array.isArray(effect.data)) {
+            errors.push({ path: `${ePrefix}.data`, message: "Must be an object if provided" });
+          }
+        }
+        break;
+      default:
+        errors.push({ path: `${ePrefix}.type`, message: `Unknown effect type "${type}"` });
+    }
+  }
+}
+
+function isCardRef(val: unknown): val is "context" | "target" {
+  return val === "context" || val === "target";
 }

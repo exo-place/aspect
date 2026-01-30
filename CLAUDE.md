@@ -36,6 +36,16 @@ Key modules:
 - `src/pack-validate.ts` — `validateWorldPack()` schema validator (structure, uniqueness, referential integrity)
 - `src/default-pack.ts` — built-in "Rooms & Items" starter pack
 
+### Actions
+
+Declarative when/do language for graph transformations. Actions live in world packs and define context/target preconditions plus atomic effects. Uses JSONLogic predicates for `when` clauses.
+
+Key modules:
+- `src/action-types.ts` — pure data interfaces (`ActionDef`, `ActionData`, `ActionEvent`, `ActionEffect`, `CardRef`, `JsonLogic`)
+- `src/json-logic.ts` — minimal JSONLogic evaluator (own implementation, no dependency)
+- `src/action.ts` — `buildActionData()`, `isActionAvailable()`, `findActionTargets()`, `executeAction()`
+- `src/event-log.ts` — `EventLog` class (CRDT-synced `Y.Array`, append-only, dispatches `onChange`)
+
 ### Snapshots
 
 Full graph state can be exported/imported as JSON files (`AspectSnapshot` format: version, graph data, world pack).
@@ -60,7 +70,7 @@ Key modules:
 
 ### Multiplayer
 
-Y.js CRDTs are the source of truth for all card/edge/pack state. `CardGraph` wraps `Y.Map` collections from a shared `Y.Doc`. Persistence uses `y-indexeddb`; real-time sync uses `y-websocket` with a Bun WebSocket server at `/ws/:room`. Undo/redo is per-client via `Y.UndoManager` (tracks cards, edges, and pack).
+Y.js CRDTs are the source of truth for all card/edge/pack/event state. `CardGraph` wraps `Y.Map` collections from a shared `Y.Doc`. Persistence uses `y-indexeddb`; real-time sync uses `y-websocket` with a Bun WebSocket server at `/ws/:room`. Undo/redo is per-client via `Y.UndoManager` (tracks cards, edges, pack, and events).
 
 ### Design Principles
 
