@@ -11,9 +11,9 @@ export class Minimap {
   readonly el: HTMLDivElement;
   private world: HTMLDivElement;
   private viewport: HTMLDivElement;
+  private zoomBadge: HTMLDivElement;
   private cardEls = new Map<string, HTMLDivElement>();
 
-  private zoom = 1;
   private panX = 0;
   private panY = 0;
 
@@ -31,15 +31,12 @@ export class Minimap {
     this.viewport = document.createElement("div");
     this.viewport.className = "minimap-viewport";
 
+    this.zoomBadge = document.createElement("div");
+    this.zoomBadge.className = "minimap-zoom-badge";
+
     this.el.appendChild(this.world);
     this.el.appendChild(this.viewport);
-
-    this.el.addEventListener("wheel", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const delta = -e.deltaY * 0.002;
-      this.zoom = Math.min(10, Math.max(0.1, this.zoom * (1 + delta)));
-    }, { passive: false });
+    this.el.appendChild(this.zoomBadge);
 
     this.el.addEventListener("pointerdown", (e) => {
       if (e.button !== 0) return;
@@ -60,7 +57,10 @@ export class Minimap {
     }
     this.el.style.display = "";
 
-    // Compute bounding box of all cards
+    // Update zoom badge
+    this.zoomBadge.textContent = `${Math.round(canvasState.zoom * 100)}%`;
+
+    // Compute bounding box of cards only
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const card of cards) {
       const w = card.width ?? 120;
@@ -70,22 +70,12 @@ export class Minimap {
       maxY = Math.max(maxY, card.position.y + 40);
     }
 
-    // Include viewport bounds in the bounding box
-    const vpLeft = -canvasState.panX / canvasState.zoom;
-    const vpTop = -canvasState.panY / canvasState.zoom;
-    const vpRight = vpLeft + viewportWidth / canvasState.zoom;
-    const vpBottom = vpTop + viewportHeight / canvasState.zoom;
-    minX = Math.min(minX, vpLeft);
-    minY = Math.min(minY, vpTop);
-    maxX = Math.max(maxX, vpRight);
-    maxY = Math.max(maxY, vpBottom);
-
     const worldW = maxX - minX + PADDING * 2;
     const worldH = maxY - minY + PADDING * 2;
 
-    // Fit scale
-    const fitScale = Math.min(MINIMAP_WIDTH / worldW, MINIMAP_HEIGHT / worldH);
-    const scale = fitScale * this.zoom;
+    // Fit scale clamped so tiny graphs don't over-zoom
+    const fitScale = Math.min(1.0, Math.min(MINIMAP_WIDTH / worldW, MINIMAP_HEIGHT / worldH));
+    const scale = fitScale;
 
     const offsetX = (MINIMAP_WIDTH - worldW * scale) / 2;
     const offsetY = (MINIMAP_HEIGHT - worldH * scale) / 2;
@@ -120,12 +110,12 @@ export class Minimap {
     }
 
     // Position viewport indicator
-    const vl = vpLeft;
-    const vt = vpTop;
+    const vpLeft = -canvasState.panX / canvasState.zoom;
+    const vpTop = -canvasState.panY / canvasState.zoom;
     const vw = viewportWidth / canvasState.zoom;
     const vh = viewportHeight / canvasState.zoom;
-    this.viewport.style.left = `${this.panX + vl * scale}px`;
-    this.viewport.style.top = `${this.panY + vt * scale}px`;
+    this.viewport.style.left = `${this.panX + vpLeft * scale}px`;
+    this.viewport.style.top = `${this.panY + vpTop * scale}px`;
     this.viewport.style.width = `${vw * scale}px`;
     this.viewport.style.height = `${vh * scale}px`;
   }

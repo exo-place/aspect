@@ -1,3 +1,5 @@
+import { parseViewportHash, writeViewportHash } from "../viewport-hash";
+
 export interface CanvasState {
   panX: number;
   panY: number;
@@ -13,6 +15,7 @@ export interface CanvasEvents {
 const ZOOM_SENSITIVITY = 0.001;
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_MOVE_THRESHOLD = 5;
+const VIEWPORT_SAVE_DEBOUNCE_MS = 500;
 
 export class Canvas {
   readonly root: HTMLDivElement;
@@ -40,8 +43,20 @@ export class Canvas {
   private longPressTimer: ReturnType<typeof setTimeout> | null = null;
   private longPressFired = false;
 
+  // Viewport persistence
+  private roomName: string | null = null;
+  syncHash = false;
+  private viewportSaveTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // Brush selection
+  private isBrushing = false;
+  private brushStartX = 0;
+  private brushStartY = 0;
+  private brushRect: HTMLDivElement | null = null;
+
   events: CanvasEvents | null = null;
   onTransformChange: (() => void) | null = null;
+  onBrushSelect: ((cardIds: string[]) => void) | null = null;
 
   constructor(container: HTMLElement) {
     this.root = document.createElement("div");
@@ -92,10 +107,66 @@ export class Canvas {
     return { width: rect.width, height: rect.height };
   }
 
+  setRoomName(name: string): void {
+    this.roomName = name;
+  }
+
+  saveViewport(): void {
+    if (!this.roomName) return;
+    const data = { panX: this.state.panX, panY: this.state.panY, zoom: this.state.zoom };
+    try {
+      localStorage.setItem(`aspect:viewport:${this.roomName}`, JSON.stringify(data));
+    } catch {
+      // localStorage full or unavailable
+    }
+  }
+
+  restoreViewport(): boolean {
+    if (!this.roomName) return false;
+    try {
+      const raw = localStorage.getItem(`aspect:viewport:${this.roomName}`);
+      if (!raw) return false;
+      const data = JSON.parse(raw) as { panX: number; panY: number; zoom: number };
+      if (!Number.isFinite(data.panX) || !Number.isFinite(data.panY) || !Number.isFinite(data.zoom)) return false;
+      if (data.zoom <= 0) return false;
+      this.state.panX = data.panX;
+      this.state.panY = data.panY;
+      this.state.zoom = data.zoom;
+      this.applyTransform();
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  restoreFromHash(): boolean {
+    const vp = parseViewportHash();
+    if (!vp) return false;
+    this.state.panX = vp.panX;
+    this.state.panY = vp.panY;
+    this.state.zoom = vp.zoom;
+    this.applyTransform();
+    return true;
+  }
+
+  private debouncedSaveViewport(): void {
+    if (this.viewportSaveTimer !== null) {
+      clearTimeout(this.viewportSaveTimer);
+    }
+    this.viewportSaveTimer = setTimeout(() => {
+      this.viewportSaveTimer = null;
+      this.saveViewport();
+      if (this.syncHash) {
+        writeViewportHash(this.state.panX, this.state.panY, this.state.zoom);
+      }
+    }, VIEWPORT_SAVE_DEBOUNCE_MS);
+  }
+
   private applyTransform(): void {
     this.world.style.transform =
       `translate(${this.state.panX}px, ${this.state.panY}px) scale(${this.state.zoom})`;
     this.onTransformChange?.();
+    this.debouncedSaveViewport();
   }
 
   private bindEvents(): void {
@@ -149,6 +220,24 @@ export class Canvas {
     if (e.button !== 0) return;
     // Only pan when clicking directly on canvas or world (not on cards)
     if (!this.isCanvasTarget(e.target)) return;
+
+    // Shift-click on canvas background starts brush selection
+    if (e.shiftKey) {
+      this.isBrushing = true;
+      this.brushStartX = e.clientX;
+      this.brushStartY = e.clientY;
+      const rect = document.createElement("div");
+      rect.className = "selection-brush";
+      rect.style.left = `${e.clientX}px`;
+      rect.style.top = `${e.clientY}px`;
+      rect.style.width = "0px";
+      rect.style.height = "0px";
+      document.body.appendChild(rect);
+      this.brushRect = rect;
+      this.root.setPointerCapture(e.pointerId);
+      return;
+    }
+
     this.isPanning = true;
     this.panStartX = e.clientX;
     this.panStartY = e.clientY;
@@ -176,6 +265,19 @@ export class Canvas {
     // Update tracked pointer
     if (this.activePointers.has(e.pointerId)) {
       this.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    // Brush selection
+    if (this.isBrushing && this.brushRect) {
+      const x = Math.min(this.brushStartX, e.clientX);
+      const y = Math.min(this.brushStartY, e.clientY);
+      const w = Math.abs(e.clientX - this.brushStartX);
+      const h = Math.abs(e.clientY - this.brushStartY);
+      this.brushRect.style.left = `${x}px`;
+      this.brushRect.style.top = `${y}px`;
+      this.brushRect.style.width = `${w}px`;
+      this.brushRect.style.height = `${h}px`;
+      return;
     }
 
     // Pinch-to-zoom
@@ -215,6 +317,38 @@ export class Canvas {
 
   private onPointerUp(e: PointerEvent): void {
     this.activePointers.delete(e.pointerId);
+
+    // Brush selection end
+    if (this.isBrushing) {
+      this.isBrushing = false;
+      if (this.brushRect) {
+        const bw = Math.abs(e.clientX - this.brushStartX);
+        const bh = Math.abs(e.clientY - this.brushStartY);
+        if (bw >= 5 || bh >= 5) {
+          const brushLeft = Math.min(this.brushStartX, e.clientX);
+          const brushTop = Math.min(this.brushStartY, e.clientY);
+          const brushRight = brushLeft + Math.abs(e.clientX - this.brushStartX);
+          const brushBottom = brushTop + Math.abs(e.clientY - this.brushStartY);
+
+          const selected: string[] = [];
+          const cards = this.cardLayer.querySelectorAll<HTMLDivElement>(".card");
+          for (const card of cards) {
+            const cr = card.getBoundingClientRect();
+            // AABB overlap test
+            if (cr.right >= brushLeft && cr.left <= brushRight &&
+                cr.bottom >= brushTop && cr.top <= brushBottom) {
+              const id = card.dataset.cardId;
+              if (id) selected.push(id);
+            }
+          }
+          this.onBrushSelect?.(selected);
+        }
+        this.brushRect.remove();
+        this.brushRect = null;
+      }
+      return;
+    }
+
     this.cancelLongPress();
 
     if (this.isPinching) {

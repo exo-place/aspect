@@ -7,6 +7,7 @@ export class TabBar {
   private mode: TabMode = "graph";
 
   onModeChange: ((mode: TabMode) => void) | null = null;
+  onSettingsClick: (() => void) | null = null;
 
   constructor() {
     this.el = document.createElement("div");
@@ -18,6 +19,21 @@ export class TabBar {
 
     this.el.appendChild(this.graphBtn);
     this.el.appendChild(this.projectionBtn);
+
+    // Spacer to push gear button to the right
+    const spacer = document.createElement("div");
+    spacer.style.flex = "1";
+    this.el.appendChild(spacer);
+
+    // Settings gear button
+    const gearBtn = document.createElement("button");
+    gearBtn.className = "tab-bar-icon-btn";
+    gearBtn.setAttribute("aria-label", "Settings");
+    gearBtn.textContent = "\u2699";
+    gearBtn.addEventListener("click", () => {
+      this.onSettingsClick?.();
+    });
+    this.el.appendChild(gearBtn);
 
     this.updateActive();
   }

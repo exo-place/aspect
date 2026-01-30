@@ -54,7 +54,7 @@ Key modules:
 - `src/projection-types.ts` — `PanelItem`, `PanelDef`, `ProjectionData` interfaces (with optional `affordances` and `extraAffordances`)
 - `src/projection.ts` — `buildProjectionData()` pure function (pack-driven panel mapping)
 - `src/ui/projection-view.ts` — `ProjectionView` DOM renderer (location header, panels, affordance buttons, presence)
-- `src/ui/tab-bar.ts` — `TabBar` component (Build/Experience tabs, `TabMode` type)
+- `src/ui/tab-bar.ts` — `TabBar` component (Build/Experience tabs, settings gear button, `TabMode` type)
 
 ### Affordance Discovery
 
@@ -83,9 +83,11 @@ Key modules:
 
 ### UI Components
 
-- `src/ui/minimap.ts` — `Minimap` class: overview inset showing all cards and viewport, click-to-navigate, independent zoom
+- `src/ui/minimap.ts` — `Minimap` class: overview inset auto-fitting all cards, click-to-navigate, zoom level badge
 - `src/ui/card-node.ts` — card DOM element creation with drag, resize handle, edge-drag, and editing
 - `src/ui/edge-line.ts` — SVG edge rendering with multiple styles, labels (double-click to edit), arrow markers
+- `src/ui/canvas.ts` — `Canvas` class: pan/zoom, pinch-to-zoom, viewport persistence (localStorage + URL hash `#v=`), shift-drag brush selection
+- `src/viewport-hash.ts` — parse/write `#v=panX,panY,zoom` URL hash for shareable viewport positions
 
 ### Server Persistence
 

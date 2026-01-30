@@ -74,7 +74,6 @@ export function createCardElement(
       cardOriginX = parseFloat(el.style.left);
       cardOriginY = parseFloat(el.style.top);
       el.classList.add("dragging");
-      el.parentNode?.appendChild(el);
       events.onDragStart(cardId);
     }
   });

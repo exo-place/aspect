@@ -61,7 +61,7 @@ export class App {
   private eventLog: EventLog;
   private container: HTMLElement;
 
-  constructor(container: HTMLElement, graph: CardGraph, bundle: YDocBundle, presence: Presence, packStore: WorldPackStore) {
+  constructor(container: HTMLElement, graph: CardGraph, bundle: YDocBundle, presence: Presence, packStore: WorldPackStore, roomName?: string) {
     this.container = container;
     this.graph = graph;
     this.navigator = new Navigator(graph);
@@ -71,6 +71,9 @@ export class App {
     this.tabBar = new TabBar();
     container.appendChild(this.tabBar.el);
     this.canvas = new Canvas(container);
+    if (roomName) {
+      this.canvas.setRoomName(roomName);
+    }
     this.eventLog = new EventLog(bundle);
     this.projectionView = new ProjectionView({
       onNavigate: (cardId) => {
@@ -88,6 +91,13 @@ export class App {
     container.appendChild(this.projectionView.el);
     this.projectionView.el.style.display = "none";
     this.tabBar.onModeChange = (mode) => this.setMode(mode);
+    this.tabBar.onSettingsClick = () => {
+      if (this.settingsPanel.isOpen) {
+        this.settingsPanel.close();
+      } else {
+        this.settingsPanel.open();
+      }
+    };
     this.presence = presence;
     this.packStore = packStore;
     this.presencePanel = new PresencePanel(
@@ -340,6 +350,16 @@ export class App {
       onContextMenu: (screenX, screenY, worldX, worldY) => {
         showContextMenu("canvas", screenX, screenY, { worldX, worldY });
       },
+    };
+
+    this.canvas.onBrushSelect = (cardIds) => {
+      this.selection.clear();
+      for (const id of cardIds) {
+        this.selection.toggle(id);
+      }
+      if (cardIds.length > 0 && !this.navigator.current) {
+        this.navigator.jumpTo(cardIds[0]);
+      }
     };
 
     this.graph.onChange = () => this.renderActiveMode();
@@ -882,8 +902,17 @@ export class App {
       this.canvas.centerOn(0, 0);
     } else {
       this.navigator.jumpTo(cards[0].id);
-      this.canvas.centerOn(cards[0].position.x, cards[0].position.y);
+      // Restore viewport: hash > localStorage > center on first card
+      const restoredHash = this.canvas.restoreFromHash();
+      if (!restoredHash) {
+        const restoredLocal = this.canvas.restoreViewport();
+        if (!restoredLocal) {
+          this.canvas.centerOn(cards[0].position.x, cards[0].position.y);
+        }
+      }
     }
+
+    this.canvas.syncHash = true;
 
     // Apply default mode from settings
     const defaultMode = this.settings.get("defaultMode");

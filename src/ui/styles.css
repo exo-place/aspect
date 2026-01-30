@@ -495,6 +495,40 @@ html, body {
   pointer-events: none;
 }
 
+.minimap-zoom-badge {
+  position: absolute;
+  bottom: 4px;
+  left: 6px;
+  font-size: 10px;
+  color: #888;
+  pointer-events: none;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tab bar icon button */
+.tab-bar-icon-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 12px;
+  line-height: 36px;
+}
+
+.tab-bar-icon-btn:hover {
+  color: #e0e0e0;
+}
+
+/* Selection brush */
+.selection-brush {
+  position: fixed;
+  border: 1.5px solid rgba(124, 156, 255, 0.6);
+  background: rgba(124, 156, 255, 0.08);
+  pointer-events: none;
+  z-index: 5;
+}
+
 /* Settings panel */
 .settings-overlay {
   position: fixed;

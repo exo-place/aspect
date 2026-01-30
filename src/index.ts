@@ -89,7 +89,7 @@ async function main() {
   }
 
   const presence = new Presence(provider.awareness);
-  const app = new App(container, graph, bundle, presence, packStore);
+  const app = new App(container, graph, bundle, presence, packStore, roomName);
   app.bootstrap();
 }
 
