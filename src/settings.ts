@@ -1,4 +1,5 @@
 import type { EdgeStyle } from "./ui/edge-line";
+import type { TabMode } from "./ui/tab-bar";
 
 export type ControlType =
   | { type: "toggle" }
@@ -48,15 +49,29 @@ export const SETTINGS_SCHEMA: Record<string, SettingDef> = {
     section: "Canvas",
     control: { type: "number", min: 1.0, max: 10.0, step: 0.5 },
   },
+  defaultMode: {
+    default: "graph" as TabMode,
+    label: "Default mode",
+    section: "General",
+    description: "Which tab to show on startup",
+    control: {
+      type: "select",
+      options: [
+        { value: "graph", label: "Build" },
+        { value: "projection", label: "Experience" },
+      ],
+    },
+  },
 };
 
-export type SettingsKey = "edgeStyle" | "showMinimap" | "minZoom" | "maxZoom";
+export type SettingsKey = "edgeStyle" | "showMinimap" | "minZoom" | "maxZoom" | "defaultMode";
 
 export interface SettingsValues {
   edgeStyle: EdgeStyle;
   showMinimap: boolean;
   minZoom: number;
   maxZoom: number;
+  defaultMode: TabMode;
 }
 
 const STORAGE_KEY = "aspect:settings";

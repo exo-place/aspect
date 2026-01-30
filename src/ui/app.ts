@@ -183,6 +183,9 @@ export class App {
           this.packInfoPanel.open();
         }
       },
+      cycleMode: () => {
+        this.setMode(this.mode === "graph" ? "projection" : "graph");
+      },
       exportGraph: () => this.exportGraph(),
       importGraph: () => this.importGraph(),
       exportPack: () => this.exportPack(),
@@ -850,6 +853,12 @@ export class App {
     } else {
       this.navigator.jumpTo(cards[0].id);
       this.canvas.centerOn(cards[0].position.x, cards[0].position.y);
+    }
+
+    // Apply default mode from settings
+    const defaultMode = this.settings.get("defaultMode");
+    if (defaultMode !== "graph") {
+      this.setMode(defaultMode);
     }
   }
 }

@@ -21,6 +21,7 @@ export interface KeybindHandlers {
   search(): void;
   openSettings(): void;
   openPackInfo(): void;
+  cycleMode(): void;
   undo(): void;
   redo(): void;
   navigateDirection(direction: "up" | "down" | "left" | "right"): void;
@@ -145,6 +146,11 @@ const schema = defineSchema({
     label: "Pack info",
     category: "General",
   },
+  "cycle-mode": {
+    label: "Cycle mode",
+    category: "General",
+    keys: ["$mod+."],
+  },
 });
 
 const store = new BindingsStore(schema, "aspect:keybinds");
@@ -198,6 +204,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       },
       settings: () => handlers.openSettings(),
       "pack-info": () => handlers.openPackInfo(),
+      "cycle-mode": () => handlers.cycleMode(),
     },
     {
       "edit-card": {
@@ -264,6 +271,9 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
         captureInput: true,
       },
       "pack-info": {
+        when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
+      },
+      "cycle-mode": {
         when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
       },
     },
