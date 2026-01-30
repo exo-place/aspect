@@ -46,6 +46,16 @@ Key modules:
 - `src/action.ts` — `buildActionData()`, `isActionAvailable()`, `findActionTargets()`, `executeAction()`
 - `src/event-log.ts` — `EventLog` class (CRDT-synced `Y.Array`, append-only, dispatches `onChange`)
 
+### Projection Layer
+
+A second UI mode that renders the graph as a **place** rather than a diagram. The current card becomes a location description with panels derived from its edges, categorized by edge type from the world pack. Both modes share all state; switching hides one, shows the other.
+
+Key modules:
+- `src/projection-types.ts` — `PanelItem`, `PanelDef`, `ProjectionData` interfaces
+- `src/projection.ts` — `buildProjectionData()` pure function (pack-driven panel mapping)
+- `src/ui/projection-view.ts` — `ProjectionView` DOM renderer (location header, panels, presence)
+- `src/ui/tab-bar.ts` — `TabBar` component (Build/Experience tabs, `TabMode` type)
+
 ### Snapshots
 
 Full graph state can be exported/imported as JSON files (`AspectSnapshot` format: version, graph data, world pack).

@@ -68,13 +68,20 @@ Declarative when/do language for compressed graph transformations. Predicate lan
 
 The experiential UI — graph rendered as place, not diagram. Routing: **tabs** (graph editor and projection as parallel tabs).
 
-- [ ] **Projection renderer** — new UI mode that reads world pack to determine panel layout
-- [ ] **Edge-type-to-panel mapping** — exits → navigation, contains → inventory, wearing → equipment
-- [ ] **Place rendering** — current card as location description, not as graph node
-- [ ] **Reactive projection** — re-render on CRDT changes (navigation, remote edits, multiplayer)
-- [ ] **Tab navigation** — switch between graph editor (builder) and projection (experience) as tabs
-- [ ] **Projection presence** — show who else is "in" the same projected location
-- [ ] **Projection tests** — test that world pack → panel mapping produces correct UI structure
+- [x] **Projection data types and builder** — `ProjectionData`, `PanelDef`, `PanelItem` in `src/projection-types.ts`; `buildProjectionData()` in `src/projection.ts`
+- [x] **Tab bar component** — `TabBar` in `src/ui/tab-bar.ts` with Build/Experience tabs
+- [x] **Projection renderer** — `ProjectionView` in `src/ui/projection-view.ts` (location header, panel sections, item buttons)
+- [x] **Edge-type-to-panel mapping** — pack-driven: each `EdgeTypeDef` becomes a panel, sorted in pack definition order, untyped edges in "Connected" panel
+- [x] **Place rendering** — current card as location description with kind icon, editable text (double-click)
+- [x] **Reactive projection** — re-renders on graph.onChange, navigator.onNavigate, packStore.onChange, selection.onChange
+- [x] **Tab navigation** — `cycle-mode` keybind (`$mod+.`), `defaultMode` setting in settings
+- [x] **Projection presence** — "Who's here" section shows peers on current card
+- [x] **Projection tests** — 18 tests covering all edge cases (null card, isolated, typed/untyped, bidirectional, no pack, etc.)
+
+### Future projection ideas
+
+- [ ] **Pack-defined projections** — packs could define multiple projection layouts (e.g. map view, inventory view)
+- [ ] **Alternate canonical projections** — additional built-in views beyond graph and place (e.g. tree, timeline)
 
 ## Phase 4: affordance discovery
 
