@@ -17,6 +17,7 @@ export interface KeybindHandlers {
   linkCards(): void;
   unlinkCards(): void;
   labelEdge(): void;
+  resetZoom(): void;
   deselect(): void;
   search(): void;
   openSettings(): void;
@@ -151,6 +152,11 @@ const schema = defineSchema({
     category: "General",
     keys: ["$mod+."],
   },
+  "reset-zoom": {
+    label: "Reset zoom to 100%",
+    category: "Navigation",
+    keys: ["$mod+0"],
+  },
 });
 
 const store = new BindingsStore(schema, "aspect:keybinds");
@@ -198,6 +204,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       "import-graph": () => handlers.importGraph(),
       "export-pack": () => handlers.exportPack(),
       "import-pack": () => handlers.importPack(),
+      "reset-zoom": () => handlers.resetZoom(),
       "command-palette": () => {
         const el = document.querySelector("command-palette");
         if (el) el.open = !el.open;
@@ -262,6 +269,9 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
         when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "import-pack": {
+        when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
+      },
+      "reset-zoom": {
         when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "command-palette": {

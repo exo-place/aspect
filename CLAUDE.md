@@ -83,7 +83,7 @@ Key modules:
 
 ### UI Components
 
-- `src/ui/minimap.ts` — `Minimap` class: overview inset auto-fitting all cards, click-to-navigate, zoom level badge
+- `src/ui/minimap.ts` — `Minimap` class: overview inset showing all cards and viewport, click-to-navigate, independent scroll-to-zoom
 - `src/ui/card-node.ts` — card DOM element creation with drag, resize handle, edge-drag, and editing
 - `src/ui/edge-line.ts` — SVG edge rendering with multiple styles, labels (double-click to edit), arrow markers
 - `src/ui/canvas.ts` — `Canvas` class: pan/zoom, pinch-to-zoom, viewport persistence (localStorage + URL hash `#v=`), shift-drag brush selection
