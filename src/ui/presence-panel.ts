@@ -4,6 +4,7 @@ export class PresencePanel {
   private el: HTMLDivElement;
   private presence: Presence;
   private getCardText: (cardId: string) => string;
+  private zoomRow: HTMLDivElement;
 
   constructor(
     container: HTMLElement,
@@ -14,6 +15,8 @@ export class PresencePanel {
     this.getCardText = getCardText;
     this.el = document.createElement("div");
     this.el.className = "presence-panel";
+    this.zoomRow = document.createElement("div");
+    this.zoomRow.className = "presence-zoom-row";
     container.appendChild(this.el);
   }
 
@@ -23,6 +26,10 @@ export class PresencePanel {
 
   hide(): void {
     this.el.style.display = "none";
+  }
+
+  setZoom(zoom: number): void {
+    this.zoomRow.textContent = `${Math.round(zoom * 100)}%`;
   }
 
   render(): void {
@@ -43,6 +50,9 @@ export class PresencePanel {
       const row = this.createRow(peer.name, peer.color, cardText, false);
       this.el.appendChild(row);
     }
+
+    // Zoom row is always last
+    this.el.appendChild(this.zoomRow);
   }
 
   private createRow(

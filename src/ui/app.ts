@@ -58,7 +58,6 @@ export class App {
   private packInfoPanel: PackInfoPanel;
   private mode: TabMode = "graph";
   private projectionView: ProjectionView;
-  private zoomBadge: HTMLDivElement;
   private eventLog: EventLog;
   private container: HTMLElement;
 
@@ -173,13 +172,9 @@ export class App {
     this.minimap.onClick = (worldX, worldY) => {
       this.canvas.centerOn(worldX, worldY);
     };
-    this.zoomBadge = document.createElement("div");
-    this.zoomBadge.className = "zoom-badge";
-    container.appendChild(this.zoomBadge);
-
     this.canvas.onTransformChange = () => {
       this.renderMinimap();
-      this.updateZoomBadge();
+      this.presencePanel.setZoom(this.canvas.getState().zoom);
     };
 
     const { showContextMenu } = setupKeybinds({
@@ -400,14 +395,12 @@ export class App {
       this.canvas.root.style.display = "";
       this.projectionView.el.style.display = "none";
       this.minimap.el.style.display = this.settings.get("showMinimap") ? "" : "none";
-      this.zoomBadge.style.display = "";
       this.presencePanel.show();
       this.render();
     } else {
       this.canvas.root.style.display = "none";
       this.projectionView.el.style.display = "";
       this.minimap.el.style.display = "none";
-      this.zoomBadge.style.display = "none";
       this.presencePanel.hide();
       this.renderProjection();
     }
@@ -511,10 +504,6 @@ export class App {
     this.minimap.render(cards, state, vp.width, vp.height);
   }
 
-  private updateZoomBadge(): void {
-    const zoom = this.canvas.getState().zoom;
-    this.zoomBadge.textContent = `${Math.round(zoom * 100)}%`;
-  }
 
   private renderEdges(): void {
     const currentId = this.navigator.current?.id ?? null;
