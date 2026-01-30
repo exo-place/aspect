@@ -256,6 +256,7 @@ export function startEditing(
   cardEl: HTMLDivElement,
   currentText: string,
   onCommit: (text: string) => void,
+  onCancel?: () => void,
 ): void {
   if (cardEl.querySelector(".card-editor")) return;
 
@@ -284,6 +285,12 @@ export function startEditing(
       commit();
     }
     if (e.key === "Escape") {
+      if (onCancel && textarea.value.trim() === "") {
+        committed = true;
+        textarea.remove();
+        onCancel();
+        return;
+      }
       textarea.value = currentText;
       commit();
     }

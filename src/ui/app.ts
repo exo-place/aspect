@@ -393,7 +393,35 @@ export class App {
         const sourceSet = new Set(allSources);
         const hitEl = document.elementsFromPoint(screenX, screenY)
           .find((el) => el instanceof HTMLElement && el.dataset.cardId && !sourceSet.has(el.dataset.cardId!));
-        if (!(hitEl instanceof HTMLElement) || !hitEl.dataset.cardId) return;
+        if (!(hitEl instanceof HTMLElement) || !hitEl.dataset.cardId) {
+          // No card under drop — create a new card at drop position
+          const world = this.canvas.screenToWorld(screenX, screenY);
+          this.history.capture();
+          const card = this.graph.addCard("", { x: world.x - 60, y: world.y - 20 });
+          for (const srcId of allSources) {
+            this.graph.addEdge(srcId, card.id);
+          }
+          this.navigator.jumpTo(card.id);
+          this.selection.set(card.id);
+          const cardEl = this.cardElements.get(card.id);
+          if (cardEl) {
+            startEditing(cardEl, "",
+              (text) => this.editor.setText(card.id, text),
+              () => {
+                // ESC on blank: destroy the ephemeral card, return to source
+                this.graph.removeCard(card.id);
+                if (allSources.length > 0) {
+                  this.navigator.jumpTo(allSources[0]);
+                  this.selection.set(allSources[0]);
+                } else {
+                  this.navigator.deselect();
+                  this.selection.clear();
+                }
+              },
+            );
+          }
+          return;
+        }
 
         const hitId = hitEl.dataset.cardId;
         const isMultiSource = allSources.length > 1;

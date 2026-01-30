@@ -156,7 +156,7 @@ Use conventional commits: `type(scope): message`
 
 Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
 
-Before committing: `bun run lint && bun run check:types` must pass.
+Before committing: `bun run lint && bun run check:types && bun run test` must pass. Run `bun run test:e2e` for E2E browser tests (Playwright).
 
 ## Negative Constraints
 
