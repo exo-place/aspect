@@ -8,6 +8,7 @@ import type { WorldPackStore } from "../pack";
 import { DEFAULT_PACK } from "../default-pack";
 import { resolveEdgeToggle } from "../edge-toggle";
 import { Canvas } from "./canvas";
+import { TabBar } from "./tab-bar";
 import { createCardElement, updateCardElement, startEditing } from "./card-node";
 import type { CardNodeEvents } from "./card-node";
 import { createEdgeGroup, updateEdgeGroup, ensureArrowDefs } from "./edge-line";
@@ -28,6 +29,7 @@ import { exportSnapshot, validateSnapshot, importSnapshotReplace } from "../snap
 import { validateWorldPack } from "../pack-validate";
 
 export class App {
+  private tabBar: TabBar;
   private canvas: Canvas;
   private graph: CardGraph;
   private navigator: Navigator;
@@ -55,6 +57,8 @@ export class App {
     this.editor = new Editor(graph);
     this.selection = new Selection();
     this.history = new History(bundle);
+    this.tabBar = new TabBar();
+    container.appendChild(this.tabBar.el);
     this.canvas = new Canvas(container);
     this.presence = presence;
     this.packStore = packStore;
