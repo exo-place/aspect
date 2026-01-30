@@ -96,7 +96,7 @@ Connect actions to projection. The world shows you what you can do.
 
 ## Tech debt and infrastructure
 
-- [ ] **Server persistence** — server-side Y.Doc persistence (currently in-memory only; rooms lost on restart)
+- [x] **Server persistence** — server-side Y.Doc persistence via SQLite (`src/server/persist.ts`, `src/server/debounce.ts`)
 - [ ] **Room management** — list rooms, delete rooms, room metadata
 - [x] **Error boundaries** — graceful handling of CRDT conflicts, WebSocket disconnects, corrupt state
 - [ ] **Performance profiling** — benchmark render loop, DOM reconciliation, and Y.js update handling at scale (100+ cards)

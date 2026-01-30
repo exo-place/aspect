@@ -4,6 +4,8 @@ import * as awarenessProtocol from "y-protocols/awareness";
 import * as encoding from "lib0/encoding";
 import * as decoding from "lib0/decoding";
 import type { ServerWebSocket } from "bun";
+import { RoomPersistence } from "./src/server/persist";
+import { DebouncedSaver } from "./src/server/debounce";
 
 const MSG_SYNC = 0;
 const MSG_AWARENESS = 1;
@@ -21,12 +23,29 @@ interface Room {
 }
 
 const rooms = new Map<string, Room>();
+const persistence = new RoomPersistence("./data/aspect.db");
+
+function saveRoom(roomName: string): void {
+  const room = rooms.get(roomName);
+  if (!room) return;
+  const state = Y.encodeStateAsUpdate(room.doc);
+  persistence.saveRoom(roomName, state);
+}
+
+const saver = new DebouncedSaver(2000, saveRoom);
 
 function getRoom(name: string): Room {
   let room = rooms.get(name);
   if (room) return room;
 
   const doc = new Y.Doc();
+
+  // Restore persisted state
+  const saved = persistence.loadRoom(name);
+  if (saved) {
+    Y.applyUpdate(doc, saved);
+  }
+
   const awareness = new awarenessProtocol.Awareness(doc);
   awareness.setLocalState(null);
 
@@ -39,6 +58,11 @@ function getRoom(name: string): Room {
     for (const ws of room.conns.keys()) {
       ws.send(msg);
     }
+  });
+
+  // Schedule persistence on doc updates
+  doc.on("update", () => {
+    saver.schedule(name);
   });
 
   room = { doc, awareness, conns: new Map() };
@@ -64,6 +88,19 @@ function broadcastUpdate(room: Room, update: Uint8Array, origin: Conn | null): v
     }
   }
 }
+
+function shutdown(): void {
+  // Save all active rooms before exit
+  for (const roomName of rooms.keys()) {
+    saver.flush(roomName);
+  }
+  saver.destroy();
+  persistence.close();
+  process.exit(0);
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);
 
 const server = Bun.serve<WsData>({
   port: 3000,
@@ -190,6 +227,7 @@ const server = Bun.serve<WsData>({
 
       // Clean up empty rooms
       if (room.conns.size === 0) {
+        saver.flush(roomName);
         room.awareness.destroy();
         room.doc.destroy();
         rooms.delete(roomName);

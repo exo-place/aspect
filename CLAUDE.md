@@ -87,6 +87,16 @@ Key modules:
 - `src/ui/card-node.ts` — card DOM element creation with drag, resize handle, edge-drag, and editing
 - `src/ui/edge-line.ts` — SVG edge rendering with multiple styles, labels (double-click to edit), arrow markers
 
+### Server Persistence
+
+Server-side Y.Doc state is persisted to SQLite via `bun:sqlite`. On room creation, saved state is loaded and applied. Doc updates are debounced (2s) and flushed on last disconnect or server shutdown. Zero external dependencies.
+
+Key modules:
+- `src/server/persist.ts` — `RoomPersistence` class (SQLite WAL mode, prepared statements, UPSERT)
+- `src/server/debounce.ts` — `DebouncedSaver` class (timer-per-room, flush on demand, destroy all)
+
+Room lifecycle: connect → load from SQLite → sync → debounced saves → flush on last disconnect → destroy in memory.
+
 ### Multiplayer
 
 Y.js CRDTs are the source of truth for all card/edge/pack/event state. `CardGraph` wraps `Y.Map` collections from a shared `Y.Doc`. Persistence uses `y-indexeddb`; real-time sync uses `y-websocket` with a Bun WebSocket server at `/ws/:room`. Undo/redo is per-client via `Y.UndoManager` (tracks cards, edges, pack, and events).
