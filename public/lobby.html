@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aspect — Lobby</title>
+  <meta name="theme-color" content="#0a0a0a" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0a0a0a; color: #e0e0e0;
+    }
+    .lobby {
+      max-width: 640px; margin: 0 auto;
+      padding: 48px 24px;
+    }
+    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 24px; }
+    .create {
+      display: flex; gap: 8px;
+      margin-bottom: 32px;
+    }
+    .create input {
+      flex: 1; padding: 8px 12px;
+      background: #1a1a1a; border: 1px solid #333;
+      border-radius: 6px; color: #e0e0e0;
+      font-size: 0.9rem; outline: none;
+    }
+    .create input:focus { border-color: #555; }
+    .create input::placeholder { color: #666; }
+    .create button {
+      padding: 8px 16px;
+      background: #2a6; border: none; border-radius: 6px;
+      color: #fff; font-size: 0.9rem; cursor: pointer;
+    }
+    .create button:hover { background: #3b7; }
+    .room-list { list-style: none; }
+    .room-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px;
+      background: #111; border: 1px solid #222;
+      border-radius: 8px; margin-bottom: 8px;
+    }
+    .room-item:hover { border-color: #444; }
+    .room-link {
+      flex: 1; text-decoration: none; color: #e0e0e0;
+      font-weight: 500;
+    }
+    .room-link:hover { color: #fff; }
+    .room-meta {
+      font-size: 0.8rem; color: #888;
+      white-space: nowrap;
+    }
+    .room-active {
+      display: inline-block;
+      width: 8px; height: 8px;
+      background: #2a6; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .room-inactive {
+      display: inline-block;
+      width: 8px; height: 8px;
+      background: #444; border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .delete-btn {
+      background: none; border: 1px solid #444;
+      border-radius: 4px; color: #888;
+      padding: 4px 8px; font-size: 0.75rem;
+      cursor: pointer;
+    }
+    .delete-btn:hover { border-color: #c44; color: #c44; }
+    .empty {
+      color: #666; font-style: italic;
+      padding: 16px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="lobby">
+    <h1>Aspect</h1>
+    <div class="create">
+      <input id="room-input" type="text" placeholder="Room name..." autofocus />
+      <button id="create-btn">Enter</button>
+    </div>
+    <ul class="room-list" id="room-list"></ul>
+  </div>
+  <script>
+    const input = document.getElementById("room-input");
+    const createBtn = document.getElementById("create-btn");
+    const listEl = document.getElementById("room-list");
+
+    function navigateToRoom(name) {
+      if (name.trim()) {
+        window.location.href = "/room/" + encodeURIComponent(name.trim());
+      }
+    }
+
+    createBtn.addEventListener("click", () => navigateToRoom(input.value));
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") navigateToRoom(input.value);
+    });
+
+    function relativeTime(ts) {
+      const diff = Date.now() - ts;
+      const seconds = Math.floor(diff / 1000);
+      if (seconds < 60) return "just now";
+      const minutes = Math.floor(seconds / 60);
+      if (minutes < 60) return minutes + "m ago";
+      const hours = Math.floor(minutes / 60);
+      if (hours < 24) return hours + "h ago";
+      const days = Math.floor(hours / 24);
+      return days + "d ago";
+    }
+
+    async function loadRooms() {
+      try {
+        const res = await fetch("/api/rooms");
+        const data = await res.json();
+        listEl.innerHTML = "";
+
+        if (data.rooms.length === 0) {
+          listEl.innerHTML = '<li class="empty">No rooms yet. Create one above.</li>';
+          return;
+        }
+
+        for (const room of data.rooms) {
+          const li = document.createElement("li");
+          li.className = "room-item";
+
+          const dot = document.createElement("span");
+          dot.className = room.active ? "room-active" : "room-inactive";
+
+          const link = document.createElement("a");
+          link.className = "room-link";
+          link.href = "/room/" + encodeURIComponent(room.name);
+          link.textContent = room.name;
+
+          const meta = document.createElement("span");
+          meta.className = "room-meta";
+          const parts = [relativeTime(room.updatedAt)];
+          if (room.connections > 0) parts.push(room.connections + " connected");
+          meta.textContent = parts.join(" · ");
+
+          const del = document.createElement("button");
+          del.className = "delete-btn";
+          del.textContent = "Delete";
+          del.addEventListener("click", async (e) => {
+            e.preventDefault();
+            if (!confirm("Delete room \"" + room.name + "\"?")) return;
+            await fetch("/api/rooms/" + encodeURIComponent(room.name), { method: "DELETE" });
+            loadRooms();
+          });
+
+          li.append(dot, link, meta, del);
+          listEl.appendChild(li);
+        }
+      } catch (err) {
+        listEl.innerHTML = '<li class="empty">Failed to load rooms.</li>';
+      }
+    }
+
+    loadRooms();
+  </script>
+</body>
+</html>

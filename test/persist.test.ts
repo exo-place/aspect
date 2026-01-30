@@ -63,16 +63,17 @@ describe("RoomPersistence", () => {
     p.close();
   });
 
-  test("listRooms returns all rooms sorted by updated_at desc", () => {
+  test("listRooms returns all rooms sorted by updated_at desc", async () => {
     const p = makePersistence();
     p.saveRoom("old", new Uint8Array([1]));
     // Ensure different timestamps
+    await new Promise((r) => setTimeout(r, 10));
     p.saveRoom("new", new Uint8Array([2]));
     const list = p.listRooms();
     expect(list).toHaveLength(2);
     expect(list[0].name).toBe("new");
     expect(list[1].name).toBe("old");
-    expect(list[0].updatedAt).toBeGreaterThanOrEqual(list[1].updatedAt);
+    expect(list[0].updatedAt).toBeGreaterThan(list[1].updatedAt);
     p.close();
   });
 

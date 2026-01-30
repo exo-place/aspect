@@ -3,24 +3,13 @@ import * as syncProtocol from "y-protocols/sync";
 import * as awarenessProtocol from "y-protocols/awareness";
 import * as encoding from "lib0/encoding";
 import * as decoding from "lib0/decoding";
-import type { ServerWebSocket } from "bun";
 import { RoomPersistence } from "./src/server/persist";
 import { DebouncedSaver } from "./src/server/debounce";
+import { handleApi } from "./src/server/api";
+import type { WsData, Conn, Room } from "./src/server/types";
 
 const MSG_SYNC = 0;
 const MSG_AWARENESS = 1;
-
-interface WsData {
-  roomName: string;
-}
-
-type Conn = ServerWebSocket<WsData>;
-
-interface Room {
-  doc: Y.Doc;
-  awareness: awarenessProtocol.Awareness;
-  conns: Map<Conn, Set<number>>;
-}
 
 const rooms = new Map<string, Room>();
 const persistence = new RoomPersistence("./data/aspect.db");
@@ -70,6 +59,21 @@ function getRoom(name: string): Room {
   return room;
 }
 
+function destroyRoom(name: string): void {
+  const room = rooms.get(name);
+  if (!room) return;
+
+  // Close all connections
+  for (const ws of room.conns.keys()) {
+    ws.close(1000, "room deleted");
+  }
+
+  saver.flush(name);
+  room.awareness.destroy();
+  room.doc.destroy();
+  rooms.delete(name);
+}
+
 function createAwarenessMessage(update: Uint8Array): Uint8Array {
   const encoder = encoding.createEncoder();
   encoding.writeVarUint(encoder, MSG_AWARENESS);
@@ -102,6 +106,8 @@ function shutdown(): void {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
+const isProduction = process.env.NODE_ENV === "production";
+
 const server = Bun.serve<WsData>({
   port: 3000,
   async fetch(req, server) {
@@ -117,7 +123,37 @@ const server = Bun.serve<WsData>({
       return new Response("WebSocket upgrade failed", { status: 400 });
     }
 
-    const servePath = path === "/" ? "/public/index.html" : path;
+    // REST API
+    if (path.startsWith("/api/")) {
+      const res = handleApi(req, path, { persistence, rooms, destroyRoom });
+      if (res) return res;
+      return Response.json({ error: "Not found" }, { status: 404 });
+    }
+
+    // Lobby
+    if (path === "/") {
+      return new Response(Bun.file("./public/lobby.html"));
+    }
+
+    // Production: serve from dist/
+    if (isProduction) {
+      if (path.startsWith("/dist/")) {
+        const file = Bun.file(`.${path}`);
+        if (await file.exists()) {
+          const headers: Record<string, string> = {};
+          if (path.endsWith(".js")) {
+            headers["Content-Type"] = "application/javascript";
+            headers["Cache-Control"] = "public, max-age=31536000, immutable";
+          } else if (path.endsWith(".js.map")) {
+            headers["Content-Type"] = "application/json";
+          }
+          return new Response(file, { headers });
+        }
+      }
+    }
+
+    // Dev: resolve paths
+    const servePath = path.startsWith("/room/") ? "/public/index.html" : path;
 
     // Serve CSS files directly
     if (servePath.endsWith(".css")) {
@@ -130,7 +166,7 @@ const server = Bun.serve<WsData>({
     }
 
     // Bundle TypeScript from src/
-    if (servePath.startsWith("/src/") && servePath.endsWith(".ts")) {
+    if (!isProduction && servePath.startsWith("/src/") && servePath.endsWith(".ts")) {
       const src = Bun.file(`.${servePath}`);
       if (await src.exists()) {
         const built = await Bun.build({ entrypoints: [`.${servePath}`], target: "browser" });
@@ -147,8 +183,12 @@ const server = Bun.serve<WsData>({
     );
     if (await file.exists()) return new Response(file);
 
-    // SPA fallback
-    return new Response(Bun.file("./public/index.html"));
+    // SPA fallback for /room/* paths
+    if (path.startsWith("/room/")) {
+      return new Response(Bun.file("./public/index.html"));
+    }
+
+    return new Response("Not found", { status: 404 });
   },
   websocket: {
     open(ws) {
@@ -236,4 +276,4 @@ const server = Bun.serve<WsData>({
   },
 });
 
-console.log(`aspect dev server: http://localhost:${server.port}`);
+console.log(`aspect ${isProduction ? "production" : "dev"} server: http://localhost:${server.port}`);
