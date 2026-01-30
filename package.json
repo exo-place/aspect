@@ -14,7 +14,7 @@
     "lint": "oxlint",
     "bench": "bun test bench/bench.test.ts --timeout 60000",
     "test": "bun test test/",
-    "test:e2e": "npx playwright test"
+    "test:e2e": "PW_DISABLE_TS_ESM=1 bunx --bun playwright test"
   },
   "dependencies": {
     "keybinds": "github:pterror/keybinds",
@@ -23,9 +23,10 @@
     "yjs": "^13.6.29"
   },
   "devDependencies": {
-    "@playwright/test": "^1.58.0",
+    "@playwright/test": "1.57",
     "@types/bun": "latest",
     "@typescript/native-preview": "^7.0.0-dev.20260124.1",
-    "oxlint": "latest"
+    "oxlint": "latest",
+    "playwright": "1.57"
   }
 }
