@@ -172,6 +172,9 @@ export class App {
     this.minimap.onClick = (worldX, worldY) => {
       this.canvas.centerOn(worldX, worldY);
     };
+    this.minimap.onDrag = (worldX, worldY) => {
+      this.canvas.centerOn(worldX, worldY);
+    };
     this.canvas.onTransformChange = () => {
       this.renderMinimap();
       this.presencePanel.setZoom(this.canvas.getState().zoom);

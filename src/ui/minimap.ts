@@ -16,8 +16,17 @@ export class Minimap {
   private zoom = 1;
   private panX = 0;
   private panY = 0;
+  private currentScale = 1;
+  private isDragging = false;
+
+  // Cached render args for re-render on zoom change
+  private lastCards: Card[] = [];
+  private lastCanvasState: CanvasState = { panX: 0, panY: 0, zoom: 1 };
+  private lastVpWidth = 0;
+  private lastVpHeight = 0;
 
   onClick: ((worldX: number, worldY: number) => void) | null = null;
+  onDrag: ((worldX: number, worldY: number) => void) | null = null;
 
   constructor() {
     this.el = document.createElement("div");
@@ -39,16 +48,59 @@ export class Minimap {
       e.stopPropagation();
       const delta = -e.deltaY * 0.002;
       this.zoom = Math.min(10, Math.max(0.1, this.zoom * (1 + delta)));
+      this.rerender();
     }, { passive: false });
 
     this.el.addEventListener("pointerdown", (e) => {
       if (e.button !== 0) return;
       e.stopPropagation();
-      this.handleClick(e.clientX, e.clientY);
+      this.isDragging = true;
+      this.el.setPointerCapture(e.pointerId);
+      this.navigateTo(e.clientX, e.clientY);
+    });
+
+    this.el.addEventListener("pointermove", (e) => {
+      if (!this.isDragging) return;
+      this.navigateTo(e.clientX, e.clientY);
+    });
+
+    this.el.addEventListener("pointerup", (e) => {
+      if (!this.isDragging) return;
+      this.isDragging = false;
+      this.el.releasePointerCapture(e.pointerId);
+    });
+
+    this.el.addEventListener("pointercancel", (e) => {
+      this.isDragging = false;
+      this.el.releasePointerCapture(e.pointerId);
     });
   }
 
   render(
+    cards: Card[],
+    canvasState: CanvasState,
+    viewportWidth: number,
+    viewportHeight: number,
+  ): void {
+    // Cache for re-render on zoom
+    this.lastCards = cards;
+    this.lastCanvasState = canvasState;
+    this.lastVpWidth = viewportWidth;
+    this.lastVpHeight = viewportHeight;
+
+    this.renderInternal(cards, canvasState, viewportWidth, viewportHeight);
+  }
+
+  private rerender(): void {
+    this.renderInternal(
+      this.lastCards,
+      this.lastCanvasState,
+      this.lastVpWidth,
+      this.lastVpHeight,
+    );
+  }
+
+  private renderInternal(
     cards: Card[],
     canvasState: CanvasState,
     viewportWidth: number,
@@ -86,6 +138,7 @@ export class Minimap {
     // Fit scale
     const fitScale = Math.min(MINIMAP_WIDTH / worldW, MINIMAP_HEIGHT / worldH);
     const scale = fitScale * this.zoom;
+    this.currentScale = scale;
 
     const offsetX = (MINIMAP_WIDTH - worldW * scale) / 2;
     const offsetY = (MINIMAP_HEIGHT - worldH * scale) / 2;
@@ -120,30 +173,26 @@ export class Minimap {
     }
 
     // Position viewport indicator
-    const vl = vpLeft;
-    const vt = vpTop;
     const vw = viewportWidth / canvasState.zoom;
     const vh = viewportHeight / canvasState.zoom;
-    this.viewport.style.left = `${this.panX + vl * scale}px`;
-    this.viewport.style.top = `${this.panY + vt * scale}px`;
+    this.viewport.style.left = `${this.panX + vpLeft * scale}px`;
+    this.viewport.style.top = `${this.panY + vpTop * scale}px`;
     this.viewport.style.width = `${vw * scale}px`;
     this.viewport.style.height = `${vh * scale}px`;
   }
 
-  private handleClick(clientX: number, clientY: number): void {
+  private navigateTo(clientX: number, clientY: number): void {
     const rect = this.el.getBoundingClientRect();
     const mx = clientX - rect.left;
     const my = clientY - rect.top;
 
-    // Reverse the transform to get world coordinates
-    // screen = panX + worldX * scale  =>  worldX = (screen - panX) / scale
-    const transform = this.world.style.transform;
-    const scaleMatch = transform.match(/scale\(([^)]+)\)/);
-    const scale = scaleMatch ? parseFloat(scaleMatch[1]) : 1;
+    const worldX = (mx - this.panX) / this.currentScale;
+    const worldY = (my - this.panY) / this.currentScale;
 
-    const worldX = (mx - this.panX) / scale;
-    const worldY = (my - this.panY) / scale;
-
-    this.onClick?.(worldX, worldY);
+    if (this.isDragging) {
+      this.onDrag?.(worldX, worldY);
+    } else {
+      this.onClick?.(worldX, worldY);
+    }
   }
 }
