@@ -115,57 +115,65 @@ const server = Bun.serve<WsData>({
   },
   websocket: {
     open(ws) {
-      const { roomName } = ws.data;
-      const room = getRoom(roomName);
-      room.conns.set(ws, new Set());
+      try {
+        const { roomName } = ws.data;
+        const room = getRoom(roomName);
+        room.conns.set(ws, new Set());
 
-      // Listen for doc updates to broadcast
-      const onUpdate = (update: Uint8Array, origin: unknown) => {
-        broadcastUpdate(room, update, origin as Conn | null);
-      };
-      room.doc.on("update", onUpdate);
+        // Listen for doc updates to broadcast
+        const onUpdate = (update: Uint8Array, origin: unknown) => {
+          broadcastUpdate(room, update, origin as Conn | null);
+        };
+        room.doc.on("update", onUpdate);
 
-      // Send sync step 1
-      const syncEncoder = encoding.createEncoder();
-      encoding.writeVarUint(syncEncoder, MSG_SYNC);
-      syncProtocol.writeSyncStep1(syncEncoder, room.doc);
-      ws.send(encoding.toUint8Array(syncEncoder));
+        // Send sync step 1
+        const syncEncoder = encoding.createEncoder();
+        encoding.writeVarUint(syncEncoder, MSG_SYNC);
+        syncProtocol.writeSyncStep1(syncEncoder, room.doc);
+        ws.send(encoding.toUint8Array(syncEncoder));
 
-      // Send current awareness states
-      const clients = [...room.awareness.getStates().keys()];
-      if (clients.length > 0) {
-        const awarenessUpdate = awarenessProtocol.encodeAwarenessUpdate(room.awareness, clients);
-        ws.send(createAwarenessMessage(awarenessUpdate));
+        // Send current awareness states
+        const clients = [...room.awareness.getStates().keys()];
+        if (clients.length > 0) {
+          const awarenessUpdate = awarenessProtocol.encodeAwarenessUpdate(room.awareness, clients);
+          ws.send(createAwarenessMessage(awarenessUpdate));
+        }
+      } catch (e) {
+        console.error(`WebSocket open error [${ws.data.roomName}]:`, e);
       }
     },
     message(ws, message) {
-      const { roomName } = ws.data;
-      const room = rooms.get(roomName);
-      if (!room) return;
+      try {
+        const { roomName } = ws.data;
+        const room = rooms.get(roomName);
+        if (!room) return;
 
-      const data = message instanceof ArrayBuffer ? new Uint8Array(message) : message;
-      if (typeof data === "string") return;
+        const data = message instanceof ArrayBuffer ? new Uint8Array(message) : message;
+        if (typeof data === "string") return;
 
-      const decoder = decoding.createDecoder(data);
-      const messageType = decoding.readVarUint(decoder);
+        const decoder = decoding.createDecoder(data);
+        const messageType = decoding.readVarUint(decoder);
 
-      switch (messageType) {
-        case MSG_SYNC: {
-          const encoder = encoding.createEncoder();
-          encoding.writeVarUint(encoder, MSG_SYNC);
-          syncProtocol.readSyncMessage(decoder, encoder, room.doc, ws);
-          const reply = encoding.toUint8Array(encoder);
-          // Only send if encoder has content beyond the message type
-          if (reply.length > 1) {
-            ws.send(reply);
+        switch (messageType) {
+          case MSG_SYNC: {
+            const encoder = encoding.createEncoder();
+            encoding.writeVarUint(encoder, MSG_SYNC);
+            syncProtocol.readSyncMessage(decoder, encoder, room.doc, ws);
+            const reply = encoding.toUint8Array(encoder);
+            // Only send if encoder has content beyond the message type
+            if (reply.length > 1) {
+              ws.send(reply);
+            }
+            break;
           }
-          break;
+          case MSG_AWARENESS: {
+            const update = decoding.readVarUint8Array(decoder);
+            awarenessProtocol.applyAwarenessUpdate(room.awareness, update, ws);
+            break;
+          }
         }
-        case MSG_AWARENESS: {
-          const update = decoding.readVarUint8Array(decoder);
-          awarenessProtocol.applyAwarenessUpdate(room.awareness, update, ws);
-          break;
-        }
+      } catch (e) {
+        console.error(`WebSocket message error [${ws.data.roomName}]:`, e);
       }
     },
     close(ws) {

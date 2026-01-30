@@ -98,11 +98,11 @@ Connect actions to projection. The world shows you what you can do.
 
 - [ ] **Server persistence** — server-side Y.Doc persistence (currently in-memory only; rooms lost on restart)
 - [ ] **Room management** — list rooms, delete rooms, room metadata
-- [ ] **Error boundaries** — graceful handling of CRDT conflicts, WebSocket disconnects, corrupt state
+- [x] **Error boundaries** — graceful handling of CRDT conflicts, WebSocket disconnects, corrupt state
 - [ ] **Performance profiling** — benchmark render loop, DOM reconciliation, and Y.js update handling at scale (100+ cards)
 - [ ] **Bundle optimization** — tree-shake Y.js, lazy-load non-critical UI, measure bundle size
 - [ ] **E2E tests** — browser-based tests for canvas interaction, multiplayer sync, persistence
-- [ ] **CI pipeline** — automated lint + typecheck + test on push
+- [x] **CI pipeline** — automated lint + typecheck + test + build on push
 
 ## Design decisions
 

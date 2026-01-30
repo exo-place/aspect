@@ -62,7 +62,11 @@ export class EventLog {
     };
     const dataStr = yEvent.get("data") as string | undefined;
     if (dataStr !== undefined) {
-      event.data = JSON.parse(dataStr);
+      try {
+        event.data = JSON.parse(dataStr);
+      } catch {
+        console.warn("Skipping corrupt event data");
+      }
     }
     return event;
   }

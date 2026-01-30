@@ -69,6 +69,13 @@ async function main() {
   const wsProtocol = location.protocol === "https:" ? "wss:" : "ws:";
   const provider = new WebsocketProvider(`${wsProtocol}//${location.host}/ws/${roomName}`, roomName, doc);
 
+  provider.on("status", ({ status }: { status: string }) => {
+    document.body.dataset.syncStatus = status;
+  });
+  provider.on("connection-error", () => {
+    document.body.dataset.syncStatus = "error";
+  });
+
   // Wait for local persistence to sync
   await persistence.whenSynced;
 

@@ -312,37 +312,37 @@ export class CardGraph {
   }
 
   private materializeCard(id: string, yCard: Y.Map<unknown>): Card {
-    const card: Card = {
-      id,
-      text: yCard.get("text") as string,
-      position: {
-        x: yCard.get("x") as number,
-        y: yCard.get("y") as number,
-      },
-    };
-    const kind = yCard.get("kind") as string | undefined;
-    if (kind !== undefined) {
+    const text = yCard.get("text");
+    const x = yCard.get("x");
+    const y = yCard.get("y");
+    if (typeof text !== "string" || typeof x !== "number" || typeof y !== "number") {
+      throw new Error(`Card "${id}": corrupt CRDT data (text=${typeof text}, x=${typeof x}, y=${typeof y})`);
+    }
+    const card: Card = { id, text, position: { x, y } };
+    const kind = yCard.get("kind");
+    if (typeof kind === "string") {
       (card as { kind?: string }).kind = kind;
     }
-    const width = yCard.get("width") as number | undefined;
-    if (width !== undefined) {
+    const width = yCard.get("width");
+    if (typeof width === "number") {
       (card as { width?: number }).width = width;
     }
     return card;
   }
 
   private materializeEdge(id: string, yEdge: Y.Map<unknown>): Edge {
-    const label = yEdge.get("label") as string | undefined;
-    const type = yEdge.get("type") as string | undefined;
-    const edge: Edge = {
-      id,
-      from: yEdge.get("from") as string,
-      to: yEdge.get("to") as string,
-    };
-    if (label !== undefined) {
+    const from = yEdge.get("from");
+    const to = yEdge.get("to");
+    if (typeof from !== "string" || typeof to !== "string") {
+      throw new Error(`Edge "${id}": corrupt CRDT data (from=${typeof from}, to=${typeof to})`);
+    }
+    const edge: Edge = { id, from, to };
+    const label = yEdge.get("label");
+    if (typeof label === "string") {
       (edge as { label?: string }).label = label;
     }
-    if (type !== undefined) {
+    const type = yEdge.get("type");
+    if (typeof type === "string") {
       (edge as { type?: string }).type = type;
     }
     return edge;

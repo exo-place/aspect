@@ -9,6 +9,24 @@ import type {
 import type { ActionDef } from "./action-types";
 import { validateWorldPack } from "./pack-validate";
 
+function parseActionFromYMap(yAction: Y.Map<unknown>): ActionDef | null {
+  const id = yAction.get("id") as string;
+  try {
+    return {
+      id,
+      label: yAction.get("label") as string,
+      ...(yAction.get("description") !== undefined ? { description: yAction.get("description") as string } : {}),
+      context: JSON.parse(yAction.get("context") as string),
+      target: JSON.parse(yAction.get("target") as string),
+      ...(yAction.get("when") !== undefined ? { when: JSON.parse(yAction.get("when") as string) } : {}),
+      do: JSON.parse(yAction.get("do") as string),
+    };
+  } catch {
+    console.warn(`Skipping action "${id}": corrupt JSON in CRDT data`);
+    return null;
+  }
+}
+
 export type PackChangeCallback = () => void;
 
 export class WorldPackStore {
@@ -83,17 +101,10 @@ export class WorldPackStore {
     if (yActions && yActions.length > 0) {
       const actions: ActionDef[] = [];
       for (const yAction of yActions) {
-        actions.push({
-          id: yAction.get("id") as string,
-          label: yAction.get("label") as string,
-          ...(yAction.get("description") !== undefined ? { description: yAction.get("description") as string } : {}),
-          context: JSON.parse(yAction.get("context") as string),
-          target: JSON.parse(yAction.get("target") as string),
-          ...(yAction.get("when") !== undefined ? { when: JSON.parse(yAction.get("when") as string) } : {}),
-          do: JSON.parse(yAction.get("do") as string),
-        });
+        const parsed = parseActionFromYMap(yAction);
+        if (parsed) actions.push(parsed);
       }
-      pack.actions = actions;
+      if (actions.length > 0) pack.actions = actions;
     }
 
     return pack;
@@ -219,15 +230,7 @@ export class WorldPackStore {
     if (!yActions) return undefined;
     for (const yAction of yActions) {
       if (yAction.get("id") === id) {
-        return {
-          id: yAction.get("id") as string,
-          label: yAction.get("label") as string,
-          ...(yAction.get("description") !== undefined ? { description: yAction.get("description") as string } : {}),
-          context: JSON.parse(yAction.get("context") as string),
-          target: JSON.parse(yAction.get("target") as string),
-          ...(yAction.get("when") !== undefined ? { when: JSON.parse(yAction.get("when") as string) } : {}),
-          do: JSON.parse(yAction.get("do") as string),
-        };
+        return parseActionFromYMap(yAction) ?? undefined;
       }
     }
     return undefined;

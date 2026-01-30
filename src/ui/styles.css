@@ -941,6 +941,33 @@ html, body {
   display: inline-block;
 }
 
+/* Sync status indicator */
+body::after {
+  content: "";
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #555;
+  z-index: 300;
+  transition: background 0.3s;
+  pointer-events: none;
+}
+
+body[data-sync-status="connected"]::after {
+  background: #4caf50;
+}
+
+body[data-sync-status="disconnected"]::after {
+  background: #ff9800;
+}
+
+body[data-sync-status="error"]::after {
+  background: #f44336;
+}
+
 /* Screen reader only live region */
 .sr-live-region {
   position: absolute;

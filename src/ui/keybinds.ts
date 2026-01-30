@@ -200,7 +200,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       "import-pack": () => handlers.importPack(),
       "command-palette": () => {
         const el = document.querySelector("command-palette");
-        if (el) (el as HTMLElement & { open: boolean }).open = !((el as HTMLElement & { open: boolean }).open);
+        if (el) el.open = !el.open;
       },
       settings: () => handlers.openSettings(),
       "pack-info": () => handlers.openPackInfo(),
@@ -300,16 +300,16 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
   }
 
   const palette = document.createElement("command-palette");
-  (palette as unknown as { commands: Command[] }).commands = commands;
+  palette.commands = commands;
   document.body.appendChild(palette);
 
   const cheatsheet = document.createElement("keybind-cheatsheet");
   cheatsheet.setAttribute("auto-trigger", "");
-  (cheatsheet as unknown as { commands: Command[] }).commands = commands;
+  cheatsheet.commands = commands;
   document.body.appendChild(cheatsheet);
 
   const settings = document.createElement("keybind-settings");
-  (settings as unknown as { store: BindingsStore }).store = store;
+  settings.store = store;
   document.body.appendChild(settings);
 
   const getContext = () => ({

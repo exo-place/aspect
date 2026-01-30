@@ -136,8 +136,12 @@ export function isActionAvailable(
   if (action.when !== undefined) {
     const data = buildActionData(graph, contextId, targetId);
     if (!data) return false;
-    const result = apply(action.when, data as unknown as Record<string, unknown>);
-    if (!result) return false;
+    try {
+      const result = apply(action.when, data as unknown as Record<string, unknown>);
+      if (!result) return false;
+    } catch {
+      return false;
+    }
   }
 
   return true;

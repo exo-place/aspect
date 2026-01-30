@@ -127,5 +127,32 @@ declare module "keybinds" {
 
   export function registerComponents(): void;
 
+  export class CommandPalette extends HTMLElement {
+    commands: Command[];
+    open: boolean;
+  }
+
+  export class KeybindCheatsheet extends HTMLElement {
+    commands: Command[];
+    open: boolean;
+  }
+
+  export class KeybindSettings extends HTMLElement {
+    store: BindingsStore;
+    open: boolean;
+  }
+
+  export class ContextMenu extends HTMLElement {
+    commands: Command[];
+    open: boolean;
+  }
+
   export default keybinds;
+}
+
+interface HTMLElementTagNameMap {
+  "command-palette": import("keybinds").CommandPalette;
+  "keybind-cheatsheet": import("keybinds").KeybindCheatsheet;
+  "keybind-settings": import("keybinds").KeybindSettings;
+  "context-menu": import("keybinds").ContextMenu;
 }
