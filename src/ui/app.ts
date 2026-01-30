@@ -166,6 +166,14 @@ export class App {
       if (edgeId) this.labelEdgeById(edgeId);
     });
 
+    this.canvas.edgeLayer.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      const target = e.target as Element;
+      const g = target.closest("g");
+      const edgeId = g?.dataset.edgeId;
+      if (edgeId) this.showEdgeTypePickerById(edgeId, e.clientX, e.clientY);
+    });
+
     this.minimap = new Minimap();
     container.appendChild(this.minimap.el);
     if (!this.settings.get("showMinimap")) {
@@ -364,37 +372,69 @@ export class App {
           line.setAttribute("y2", String(worldTarget.y));
         }
       },
-      onEdgeDragEnd: (_sourceCardId, screenX, screenY) => {
+      onEdgeDragEnd: (sourceCardId, screenX, screenY) => {
         for (const line of this.ghostEdges) line.remove();
-        const sources = this.ghostEdgeSources;
+        const allSources = this.ghostEdgeSources;
         this.ghostEdges = [];
         this.ghostEdgeSources = [];
 
         // Find the card under the drop point (exclude all sources)
-        const sourceSet = new Set(sources);
+        const sourceSet = new Set(allSources);
         const hitEl = document.elementsFromPoint(screenX, screenY)
           .find((el) => el instanceof HTMLElement && el.dataset.cardId && !sourceSet.has(el.dataset.cardId!));
         if (!(hitEl instanceof HTMLElement) || !hitEl.dataset.cardId) return;
 
-        const targetId = hitEl.dataset.cardId;
+        const hitId = hitEl.dataset.cardId;
+        const isMultiSource = allSources.length > 1;
+        const isTargetSelected = this.selection.has(hitId);
+
+        // Decide effective sources and targets:
+        // - Both selected → single edge (dragged → drop target)
+        // - Source selected → all selected → drop target
+        // - Target selected → dragged → all selected
+        // - Neither → single edge
+        let sources: string[];
+        let targets: string[];
+        if (isMultiSource && isTargetSelected) {
+          sources = [sourceCardId];
+          targets = [hitId];
+        } else if (isMultiSource) {
+          sources = allSources;
+          targets = [hitId];
+        } else if (isTargetSelected) {
+          sources = allSources;
+          targets = [hitId];
+          for (const id of this.selection.toArray()) {
+            if (id !== hitId && id !== sourceCardId) targets.push(id);
+          }
+        } else {
+          sources = allSources;
+          targets = [hitId];
+        }
+
         this.history.capture();
+        const newEdgeIds: string[] = [];
 
         for (const srcId of sources) {
-          const action = resolveEdgeToggle(
-            srcId, [targetId],
-            (a, b) => !!this.graph.directEdge(a, b),
-          );
-          if (action === "link") {
-            this.graph.addEdge(srcId, targetId);
-          } else {
-            const edge = this.graph.directEdge(srcId, targetId);
-            if (edge) this.graph.removeEdge(edge.id);
+          for (const tgtId of targets) {
+            if (srcId === tgtId) continue;
+            const action = resolveEdgeToggle(
+              srcId, [tgtId],
+              (a, b) => !!this.graph.directEdge(a, b),
+            );
+            if (action === "link") {
+              this.graph.addEdge(srcId, tgtId);
+              const edge = this.graph.directEdge(srcId, tgtId);
+              if (edge) newEdgeIds.push(edge.id);
+            } else {
+              const edge = this.graph.directEdge(srcId, tgtId);
+              if (edge) this.graph.removeEdge(edge.id);
+            }
           }
         }
 
-        // Show edge type picker if single source and pack has edge types
-        if (sources.length === 1) {
-          this.maybeShowEdgeTypePicker(sources[0], targetId, screenX, screenY);
+        if (newEdgeIds.length > 0) {
+          this.maybeShowEdgeTypePickerForEdges(newEdgeIds, screenX, screenY);
         }
       },
     };
@@ -645,37 +685,69 @@ export class App {
     );
   }
 
-  private maybeShowEdgeTypePicker(fromId: string, toId: string, anchorX: number, anchorY: number): void {
+  private maybeShowEdgeTypePickerForEdges(edgeIds: string[], anchorX: number, anchorY: number): void {
     const pack = this.packStore.get();
     if (!pack || pack.edgeTypes.length === 0) return;
 
-    const edge = this.graph.directEdge(fromId, toId);
-    if (!edge) return;
+    const allEdges = this.graph.allEdges();
+    const edges = edgeIds
+      .map((id) => allEdges.find((e) => e.id === id))
+      .filter((e): e is NonNullable<typeof e> => !!e);
+    if (edges.length === 0) return;
 
-    const fromCard = this.graph.getCard(fromId);
-    const toCard = this.graph.getCard(toId);
+    const firstEdge = edges[0];
+    const fromCard = this.graph.getCard(firstEdge.from);
+    const toCard = this.graph.getCard(firstEdge.to);
     const sourceKind = fromCard?.kind;
     const targetKind = toCard?.kind;
 
-    // Auto-apply if only one valid type
-    const auto = autoResolveEdgeType(pack.edgeTypes, sourceKind, targetKind, this.packStore);
-    if (auto) {
-      this.history.capture();
-      this.graph.setEdgeType(edge.id, auto.id);
-      return;
+    // Auto-apply only for single edge
+    if (edgeIds.length === 1) {
+      const auto = autoResolveEdgeType(pack.edgeTypes, sourceKind, targetKind, this.packStore);
+      if (auto) {
+        this.graph.setEdgeType(edgeIds[0], auto.id);
+        return;
+      }
     }
 
     showEdgeTypePicker(
       anchorX,
       anchorY,
-      edge.type,
+      firstEdge.type,
       pack.edgeTypes,
       sourceKind,
       targetKind,
       this.packStore,
       (typeId) => {
         this.history.capture();
-        this.graph.setEdgeType(edge.id, typeId);
+        for (const id of edgeIds) {
+          this.graph.setEdgeType(id, typeId);
+        }
+      },
+    );
+  }
+
+  private showEdgeTypePickerById(edgeId: string, anchorX: number, anchorY: number): void {
+    const pack = this.packStore.get();
+    if (!pack || pack.edgeTypes.length === 0) return;
+
+    const edge = this.graph.allEdges().find((e) => e.id === edgeId);
+    if (!edge) return;
+
+    const fromCard = this.graph.getCard(edge.from);
+    const toCard = this.graph.getCard(edge.to);
+
+    showEdgeTypePicker(
+      anchorX,
+      anchorY,
+      edge.type,
+      pack.edgeTypes,
+      fromCard?.kind,
+      toCard?.kind,
+      this.packStore,
+      (typeId) => {
+        this.history.capture();
+        this.graph.setEdgeType(edgeId, typeId);
       },
     );
   }
@@ -818,16 +890,20 @@ export class App {
     const selected = this.selection.toArray().filter((id) => id !== currentId);
     if (selected.length === 0) return;
     this.history.capture();
+    const newEdgeIds: string[] = [];
     for (const targetId of selected) {
       this.graph.addEdge(currentId, targetId);
+      const edge = this.graph.directEdge(currentId, targetId);
+      if (edge) newEdgeIds.push(edge.id);
     }
-    // Show edge type picker if pack has edge types and single target
-    if (selected.length === 1) {
-      const targetEl = this.cardElements.get(selected[0]);
-      if (targetEl) {
-        const rect = targetEl.getBoundingClientRect();
-        this.maybeShowEdgeTypePicker(currentId, selected[0], rect.left, rect.bottom + 4);
-      }
+    if (newEdgeIds.length > 0) {
+      const lastEl = this.cardElements.get(selected[selected.length - 1]);
+      const rect = lastEl?.getBoundingClientRect();
+      this.maybeShowEdgeTypePickerForEdges(
+        newEdgeIds,
+        rect?.left ?? 0,
+        rect ? rect.bottom + 4 : 0,
+      );
     }
   }
 
@@ -990,5 +1066,7 @@ export class App {
     if (defaultMode !== "graph") {
       this.setMode(defaultMode);
     }
+
+    this.renderActiveMode();
   }
 }
