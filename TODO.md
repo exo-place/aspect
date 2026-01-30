@@ -99,9 +99,9 @@ Connect actions to projection. The world shows you what you can do.
 - [x] **Server persistence** — server-side Y.Doc persistence via SQLite (`src/server/persist.ts`, `src/server/debounce.ts`)
 - [x] **Room management** — REST API (`src/server/api.ts`), lobby UI (`public/lobby.html`), room list/detail/delete endpoints
 - [x] **Error boundaries** — graceful handling of CRDT conflicts, WebSocket disconnects, corrupt state
-- [ ] **Performance profiling** — benchmark render loop, DOM reconciliation, and Y.js update handling at scale (100+ cards)
+- [x] **Performance profiling** — benchmark suite in `test/bench.test.ts` covering graph materialization, projection, affordances, actions, CRDT sync, and incremental updates at 100/500/1000 cards (`bun run bench`)
 - [x] **Bundle optimization** — minified build with sourcemaps (`scripts/build.ts`), analyzer (`scripts/analyze.ts`), size budget check (`scripts/check-size.ts`), production serving mode
-- [ ] **E2E tests** — browser-based tests for canvas interaction, multiplayer sync, persistence
+- [x] **E2E tests** — Playwright browser tests in `test/e2e/` covering lobby, graph editor, tab switching, multiplayer sync, and persistence (`bun run test:e2e`)
 - [x] **CI pipeline** — automated lint + typecheck + test + build on push
 
 ## Design decisions

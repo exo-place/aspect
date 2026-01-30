@@ -133,8 +133,12 @@ bun run check:size   # Build + size budget check (<120 KB gzip, <100 KB brotli)
 bun run lint         # oxlint
 bun run check:types  # TypeScript check
 bun test             # Run tests
+bun run bench        # Performance benchmarks (100/500/1000 cards)
+bun run test:e2e     # E2E browser tests (requires Node.js + Chromium)
 cd docs && bun dev   # Local docs
 ```
+
+E2E tests require Node.js (Playwright doesn't run under Bun). In the Nix environment: `nix-shell -p nodejs --run "npx playwright test"`.
 
 Production mode: `NODE_ENV=production bun run start` serves from `dist/` with cache headers.
 

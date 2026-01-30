@@ -12,7 +12,7 @@ const MSG_SYNC = 0;
 const MSG_AWARENESS = 1;
 
 const rooms = new Map<string, Room>();
-const persistence = new RoomPersistence("./data/aspect.db");
+const persistence = new RoomPersistence((process.env.DATA_DIR || "./data") + "/aspect.db");
 
 function saveRoom(roomName: string): void {
   const room = rooms.get(roomName);
@@ -109,7 +109,7 @@ process.on("SIGTERM", shutdown);
 const isProduction = process.env.NODE_ENV === "production";
 
 const server = Bun.serve<WsData>({
-  port: 3000,
+  port: Number(process.env.PORT) || 3000,
   async fetch(req, server) {
     const url = new URL(req.url);
     const path = url.pathname;

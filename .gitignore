@@ -27,3 +27,7 @@ data/
 
 # Build
 dist/
+
+# Playwright
+test-results/
+playwright-report/
