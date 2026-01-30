@@ -1,4 +1,5 @@
 import { gzipSync } from "bun";
+import { brotliCompressSync } from "node:zlib";
 import { rmSync, mkdirSync } from "node:fs";
 
 const DIST = "./dist";
@@ -42,22 +43,26 @@ function formatSize(bytes: number): string {
 }
 
 console.log("\nBuild output:\n");
-console.log("  File".padEnd(40) + "Raw".padStart(12) + "Gzip".padStart(12));
-console.log("  " + "─".repeat(60));
+console.log("  File".padEnd(40) + "Raw".padStart(12) + "Gzip".padStart(12) + "Brotli".padStart(12));
+console.log("  " + "─".repeat(72));
 
 let totalRaw = 0;
 let totalGzip = 0;
+let totalBrotli = 0;
 
 for (const output of result.outputs) {
   const name = output.path.replace(process.cwd() + "/", "");
   const raw = output.size;
   const blob = await output.arrayBuffer();
-  const gzip = gzipSync(new Uint8Array(blob)).length;
+  const bytes = new Uint8Array(blob);
+  const gzip = gzipSync(bytes).length;
+  const brotli = brotliCompressSync(bytes).length;
   totalRaw += raw;
   totalGzip += gzip;
-  console.log(`  ${name.padEnd(38)}${formatSize(raw).padStart(12)}${formatSize(gzip).padStart(12)}`);
+  totalBrotli += brotli;
+  console.log(`  ${name.padEnd(38)}${formatSize(raw).padStart(12)}${formatSize(gzip).padStart(12)}${formatSize(brotli).padStart(12)}`);
 }
 
-console.log("  " + "─".repeat(60));
-console.log(`  ${"Total".padEnd(38)}${formatSize(totalRaw).padStart(12)}${formatSize(totalGzip).padStart(12)}`);
+console.log("  " + "─".repeat(72));
+console.log(`  ${"Total".padEnd(38)}${formatSize(totalRaw).padStart(12)}${formatSize(totalGzip).padStart(12)}${formatSize(totalBrotli).padStart(12)}`);
 console.log();
