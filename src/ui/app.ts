@@ -9,6 +9,9 @@ import { DEFAULT_PACK } from "../default-pack";
 import { resolveEdgeToggle } from "../edge-toggle";
 import { Canvas } from "./canvas";
 import { TabBar } from "./tab-bar";
+import type { TabMode } from "./tab-bar";
+import { ProjectionView } from "./projection-view";
+import { buildProjectionData } from "../projection";
 import { createCardElement, updateCardElement, startEditing } from "./card-node";
 import type { CardNodeEvents } from "./card-node";
 import { createEdgeGroup, updateEdgeGroup, ensureArrowDefs } from "./edge-line";
@@ -50,8 +53,12 @@ export class App {
   private ghostEdgeSource: string | null = null;
   private liveRegion: HTMLDivElement;
   private packInfoPanel: PackInfoPanel;
+  private mode: TabMode = "graph";
+  private projectionView: ProjectionView;
+  private container: HTMLElement;
 
   constructor(container: HTMLElement, graph: CardGraph, bundle: YDocBundle, presence: Presence, packStore: WorldPackStore) {
+    this.container = container;
     this.graph = graph;
     this.navigator = new Navigator(graph);
     this.editor = new Editor(graph);
@@ -60,6 +67,19 @@ export class App {
     this.tabBar = new TabBar();
     container.appendChild(this.tabBar.el);
     this.canvas = new Canvas(container);
+    this.projectionView = new ProjectionView({
+      onNavigate: (cardId) => {
+        this.navigator.jumpTo(cardId);
+        this.selection.set(cardId);
+      },
+      onEditText: (cardId, newText) => {
+        this.history.capture();
+        this.editor.setText(cardId, newText);
+      },
+    });
+    container.appendChild(this.projectionView.el);
+    this.projectionView.el.style.display = "none";
+    this.tabBar.onModeChange = (mode) => this.setMode(mode);
     this.presence = presence;
     this.packStore = packStore;
     this.presencePanel = new PresencePanel(
@@ -311,17 +331,17 @@ export class App {
       },
     };
 
-    this.graph.onChange = () => this.render();
+    this.graph.onChange = () => this.renderActiveMode();
     this.navigator.onNavigate = (card) => {
       this.presence.setCurrentCard(card?.id ?? null);
       if (card) {
         this.announce(`Navigated to ${card.text || "empty card"}`);
       }
-      this.render();
+      this.renderActiveMode();
     };
-    this.selection.onChange = () => this.render();
+    this.selection.onChange = () => this.renderActiveMode();
     this.presence.onChange = () => this.renderPresence();
-    this.packStore.onChange = () => this.render();
+    this.packStore.onChange = () => this.renderActiveMode();
   }
 
   get nav(): Navigator {
@@ -330,6 +350,43 @@ export class App {
 
   private announce(message: string): void {
     this.liveRegion.textContent = message;
+  }
+
+  setMode(mode: TabMode): void {
+    if (this.mode === mode) return;
+    this.mode = mode;
+    this.tabBar.setMode(mode);
+    if (mode === "graph") {
+      this.canvas.root.style.display = "";
+      this.projectionView.el.style.display = "none";
+      this.minimap.el.style.display = this.settings.get("showMinimap") ? "" : "none";
+      this.presencePanel.show();
+      this.render();
+    } else {
+      this.canvas.root.style.display = "none";
+      this.projectionView.el.style.display = "";
+      this.minimap.el.style.display = "none";
+      this.presencePanel.hide();
+      this.renderProjection();
+    }
+  }
+
+  getMode(): TabMode {
+    return this.mode;
+  }
+
+  private renderActiveMode(): void {
+    if (this.mode === "graph") {
+      this.render();
+    } else {
+      this.renderProjection();
+    }
+  }
+
+  private renderProjection(): void {
+    const currentId = this.navigator.current?.id ?? null;
+    const data = currentId ? buildProjectionData(currentId, this.graph, this.packStore) : null;
+    this.projectionView.render(data);
   }
 
   render(): void {

@@ -17,6 +17,14 @@ export class PresencePanel {
     container.appendChild(this.el);
   }
 
+  show(): void {
+    this.el.style.display = "";
+  }
+
+  hide(): void {
+    this.el.style.display = "none";
+  }
+
   render(): void {
     const local = this.presence.getLocalIdentity();
     const peers = this.presence.getRemotePeers();
