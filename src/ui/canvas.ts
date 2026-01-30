@@ -11,6 +11,8 @@ export interface CanvasEvents {
 }
 
 const ZOOM_SENSITIVITY = 0.001;
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_THRESHOLD = 5;
 
 export class Canvas {
   readonly root: HTMLDivElement;
@@ -29,18 +31,30 @@ export class Canvas {
   private panOriginY = 0;
   private clickTimer: number | null = null;
 
+  // Multi-touch pinch-to-zoom
+  private activePointers = new Map<number, { x: number; y: number }>();
+  private lastPinchDist = 0;
+  private isPinching = false;
+
+  // Long-press
+  private longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  private longPressFired = false;
+
   events: CanvasEvents | null = null;
   onTransformChange: (() => void) | null = null;
 
   constructor(container: HTMLElement) {
     this.root = document.createElement("div");
     this.root.className = "canvas";
+    this.root.setAttribute("role", "application");
+    this.root.setAttribute("aria-label", "Card graph canvas");
 
     this.world = document.createElement("div");
     this.world.className = "world";
 
     this.edgeLayer = document.createElementNS("http://www.w3.org/2000/svg", "svg");
     this.edgeLayer.classList.add("edge-layer");
+    this.edgeLayer.setAttribute("aria-hidden", "true");
 
     this.cardLayer = document.createElement("div");
     this.cardLayer.className = "card-layer";
@@ -88,16 +102,53 @@ export class Canvas {
     this.root.addEventListener("pointerdown", (e) => this.onPointerDown(e));
     this.root.addEventListener("pointermove", (e) => this.onPointerMove(e));
     this.root.addEventListener("pointerup", (e) => this.onPointerUp(e));
+    this.root.addEventListener("pointercancel", (e) => this.onPointerUp(e));
     this.root.addEventListener("wheel", (e) => this.onWheel(e), { passive: false });
     this.root.addEventListener("dblclick", (e) => this.onDblClick(e));
     this.root.addEventListener("contextmenu", (e) => this.onContextMenuEvent(e));
   }
 
+  private isCanvasTarget(target: EventTarget | null): boolean {
+    return target === this.root || target === this.world || target === this.cardLayer;
+  }
+
+  private cancelLongPress(): void {
+    if (this.longPressTimer !== null) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+  }
+
+  private pinchDistance(): number {
+    const pts = [...this.activePointers.values()];
+    if (pts.length < 2) return 0;
+    const dx = pts[1].x - pts[0].x;
+    const dy = pts[1].y - pts[0].y;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  private pinchCenter(): { x: number; y: number } {
+    const pts = [...this.activePointers.values()];
+    if (pts.length < 2) return { x: 0, y: 0 };
+    return { x: (pts[0].x + pts[1].x) / 2, y: (pts[0].y + pts[1].y) / 2 };
+  }
+
   private onPointerDown(e: PointerEvent): void {
+    this.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (this.activePointers.size >= 2) {
+      // Start pinch — cancel any pan or long-press in progress
+      this.isPanning = false;
+      this.root.classList.remove("panning");
+      this.cancelLongPress();
+      this.isPinching = true;
+      this.lastPinchDist = this.pinchDistance();
+      return;
+    }
+
     if (e.button !== 0) return;
     // Only pan when clicking directly on canvas or world (not on cards)
-    const target = e.target as HTMLElement;
-    if (target !== this.root && target !== this.world && target !== this.cardLayer) return;
+    if (!this.isCanvasTarget(e.target)) return;
     this.isPanning = true;
     this.panStartX = e.clientX;
     this.panStartY = e.clientY;
@@ -105,9 +156,57 @@ export class Canvas {
     this.panOriginY = this.state.panY;
     this.root.classList.add("panning");
     this.root.setPointerCapture(e.pointerId);
+
+    // Long-press
+    this.longPressFired = false;
+    this.cancelLongPress();
+    const lpX = e.clientX;
+    const lpY = e.clientY;
+    this.longPressTimer = setTimeout(() => {
+      this.longPressTimer = null;
+      this.longPressFired = true;
+      this.isPanning = false;
+      this.root.classList.remove("panning");
+      const world = this.screenToWorld(lpX, lpY);
+      this.events?.onContextMenu(lpX, lpY, world.x, world.y);
+    }, LONG_PRESS_MS);
   }
 
   private onPointerMove(e: PointerEvent): void {
+    // Update tracked pointer
+    if (this.activePointers.has(e.pointerId)) {
+      this.activePointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    // Pinch-to-zoom
+    if (this.isPinching && this.activePointers.size >= 2) {
+      const dist = this.pinchDistance();
+      if (this.lastPinchDist > 0) {
+        const scale = dist / this.lastPinchDist;
+        const center = this.pinchCenter();
+        const rect = this.root.getBoundingClientRect();
+        const cx = center.x - rect.left;
+        const cy = center.y - rect.top;
+        const oldZoom = this.state.zoom;
+        const newZoom = Math.min(this.maxZoom, Math.max(this.minZoom, oldZoom * scale));
+        this.state.panX = cx - (cx - this.state.panX) * (newZoom / oldZoom);
+        this.state.panY = cy - (cy - this.state.panY) * (newZoom / oldZoom);
+        this.state.zoom = newZoom;
+        this.applyTransform();
+      }
+      this.lastPinchDist = dist;
+      return;
+    }
+
+    // Cancel long-press if moved too far
+    if (this.longPressTimer !== null) {
+      const dx = e.clientX - this.panStartX;
+      const dy = e.clientY - this.panStartY;
+      if (Math.abs(dx) > LONG_PRESS_MOVE_THRESHOLD || Math.abs(dy) > LONG_PRESS_MOVE_THRESHOLD) {
+        this.cancelLongPress();
+      }
+    }
+
     if (!this.isPanning) return;
     this.state.panX = this.panOriginX + (e.clientX - this.panStartX);
     this.state.panY = this.panOriginY + (e.clientY - this.panStartY);
@@ -115,6 +214,24 @@ export class Canvas {
   }
 
   private onPointerUp(e: PointerEvent): void {
+    this.activePointers.delete(e.pointerId);
+    this.cancelLongPress();
+
+    if (this.isPinching) {
+      if (this.activePointers.size < 2) {
+        this.isPinching = false;
+        this.lastPinchDist = 0;
+      }
+      return;
+    }
+
+    if (this.longPressFired) {
+      this.longPressFired = false;
+      this.isPanning = false;
+      this.root.classList.remove("panning");
+      return;
+    }
+
     if (this.isPanning) {
       const dx = e.clientX - this.panStartX;
       const dy = e.clientY - this.panStartY;
@@ -152,15 +269,13 @@ export class Canvas {
       cancelAnimationFrame(this.clickTimer);
       this.clickTimer = null;
     }
-    const target = e.target as HTMLElement;
-    if (target !== this.root && target !== this.world && target !== this.cardLayer) return;
+    if (!this.isCanvasTarget(e.target)) return;
     const world = this.screenToWorld(e.clientX, e.clientY);
     this.events?.onDoubleClickEmpty(world.x, world.y);
   }
 
   private onContextMenuEvent(e: MouseEvent): void {
-    const target = e.target as HTMLElement;
-    if (target !== this.root && target !== this.world && target !== this.cardLayer) return;
+    if (!this.isCanvasTarget(e.target)) return;
     e.preventDefault();
     const world = this.screenToWorld(e.clientX, e.clientY);
     this.events?.onContextMenu(e.clientX, e.clientY, world.x, world.y);

@@ -12,12 +12,16 @@ export function showKindPicker(
 
   const picker = document.createElement("div");
   picker.className = "kind-picker";
+  picker.setAttribute("role", "listbox");
+  picker.setAttribute("aria-label", "Select kind");
   picker.style.left = `${anchorX}px`;
   picker.style.top = `${anchorY}px`;
 
   // "(none)" option to clear kind
   const noneBtn = document.createElement("button");
   noneBtn.className = "kind-picker-item";
+  noneBtn.setAttribute("role", "option");
+  noneBtn.setAttribute("aria-selected", String(!currentKind));
   if (!currentKind) noneBtn.classList.add("active");
   noneBtn.textContent = "(none)";
   noneBtn.addEventListener("click", () => {
@@ -29,6 +33,8 @@ export function showKindPicker(
   for (const kind of kinds) {
     const btn = document.createElement("button");
     btn.className = "kind-picker-item";
+    btn.setAttribute("role", "option");
+    btn.setAttribute("aria-selected", String(currentKind === kind.id));
     if (currentKind === kind.id) btn.classList.add("active");
 
     if (kind.style?.icon) {

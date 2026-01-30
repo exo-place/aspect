@@ -18,6 +18,9 @@ export class SettingsPanel {
 
     this.overlay = document.createElement("div");
     this.overlay.className = "settings-overlay";
+    this.overlay.setAttribute("role", "dialog");
+    this.overlay.setAttribute("aria-label", "Settings");
+    this.overlay.setAttribute("aria-modal", "true");
 
     const panel = document.createElement("div");
     panel.className = "settings-panel";

@@ -22,6 +22,8 @@ export class Minimap {
   constructor() {
     this.el = document.createElement("div");
     this.el.className = "minimap";
+    this.el.setAttribute("role", "img");
+    this.el.setAttribute("aria-label", "Canvas minimap");
 
     this.world = document.createElement("div");
     this.world.className = "minimap-world";

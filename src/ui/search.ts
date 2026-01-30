@@ -22,6 +22,9 @@ export class SearchOverlay {
 
     this.overlay = document.createElement("div");
     this.overlay.className = "search-overlay";
+    this.overlay.setAttribute("role", "dialog");
+    this.overlay.setAttribute("aria-label", "Search cards");
+    this.overlay.setAttribute("aria-modal", "true");
 
     const container = document.createElement("div");
     container.className = "search-container";
@@ -33,6 +36,7 @@ export class SearchOverlay {
 
     this.resultsList = document.createElement("div");
     this.resultsList.className = "search-results";
+    this.resultsList.setAttribute("role", "listbox");
 
     container.appendChild(this.input);
     container.appendChild(this.resultsList);
@@ -82,6 +86,8 @@ export class SearchOverlay {
       const card = this.results[i];
       const item = document.createElement("div");
       item.className = "search-result-item";
+      item.setAttribute("role", "option");
+      item.setAttribute("aria-selected", String(i === this.selectedIndex));
       if (i === this.selectedIndex) item.classList.add("selected");
       item.textContent = card.text || "(empty)";
       item.addEventListener("pointerdown", (e) => {

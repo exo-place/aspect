@@ -14,6 +14,9 @@ export interface CardNodeEvents {
   onResize?(cardId: string, width: number): void;
 }
 
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_THRESHOLD = 5;
+
 export function createCardElement(
   cardId: string,
   events: CardNodeEvents,
@@ -22,6 +25,8 @@ export function createCardElement(
   const el = document.createElement("div");
   el.className = "card";
   el.dataset.cardId = cardId;
+  el.setAttribute("role", "button");
+  el.setAttribute("tabindex", "0");
 
   let isDragging = false;
   let isEdgeDragging = false;
@@ -30,6 +35,15 @@ export function createCardElement(
   let dragStartY = 0;
   let cardOriginX = 0;
   let cardOriginY = 0;
+  let longPressTimer: ReturnType<typeof setTimeout> | null = null;
+  let longPressFired = false;
+
+  const cancelLongPress = () => {
+    if (longPressTimer !== null) {
+      clearTimeout(longPressTimer);
+      longPressTimer = null;
+    }
+  };
 
   el.addEventListener("pointerdown", (e) => {
     if (e.button !== 0) return;
@@ -37,6 +51,20 @@ export function createCardElement(
     dragStartX = e.clientX;
     dragStartY = e.clientY;
     el.setPointerCapture(e.pointerId);
+
+    // Start long-press timer
+    longPressFired = false;
+    cancelLongPress();
+    const lpX = e.clientX;
+    const lpY = e.clientY;
+    longPressTimer = setTimeout(() => {
+      longPressTimer = null;
+      longPressFired = true;
+      isDragging = false;
+      shiftPending = false;
+      el.classList.remove("dragging");
+      events.onContextMenu(cardId, lpX, lpY);
+    }, LONG_PRESS_MS);
 
     if (e.shiftKey && events.onEdgeDragStart) {
       // Defer edge-drag until actual movement so shift+click works for multi-select
@@ -52,11 +80,21 @@ export function createCardElement(
   });
 
   el.addEventListener("pointermove", (e) => {
+    // Cancel long-press if moved too far
+    if (longPressTimer !== null) {
+      const lpDx = e.clientX - dragStartX;
+      const lpDy = e.clientY - dragStartY;
+      if (Math.abs(lpDx) > LONG_PRESS_MOVE_THRESHOLD || Math.abs(lpDy) > LONG_PRESS_MOVE_THRESHOLD) {
+        cancelLongPress();
+      }
+    }
+
     if (shiftPending) {
       const dx = e.clientX - dragStartX;
       const dy = e.clientY - dragStartY;
       if (Math.abs(dx) >= 3 || Math.abs(dy) >= 3) {
         shiftPending = false;
+        cancelLongPress();
         isEdgeDragging = true;
         events.onEdgeDragStart!(cardId);
         events.onEdgeDragMove?.(cardId, e.clientX, e.clientY);
@@ -77,6 +115,13 @@ export function createCardElement(
   });
 
   el.addEventListener("pointerup", (e) => {
+    cancelLongPress();
+
+    if (longPressFired) {
+      longPressFired = false;
+      return;
+    }
+
     if (shiftPending) {
       // Shift+click with no drag — treat as click for multi-select
       shiftPending = false;
@@ -194,6 +239,12 @@ export function updateCardElement(
   el.classList.toggle("current", isCurrent);
   el.classList.toggle("selected", isSelected);
   el.classList.toggle("has-kind", !!kindDef);
+
+  // ARIA state
+  const kindLabel = kindDef ? ` (${kindDef.label})` : "";
+  el.setAttribute("aria-label", (card.text || "empty card") + kindLabel);
+  el.setAttribute("aria-selected", String(isSelected));
+  el.setAttribute("aria-current", isCurrent ? "true" : "false");
 
   if (kindDef?.style?.color) {
     el.style.setProperty("--kind-color", kindDef.style.color);
