@@ -4,6 +4,7 @@ import type { PeerState } from "../presence";
 export interface ProjectionViewEvents {
   onNavigate(cardId: string): void;
   onEditText(cardId: string, newText: string): void;
+  onAffordance?(actionId: string, targetCardId: string): void;
 }
 
 export class ProjectionView {
@@ -150,6 +151,52 @@ export class ProjectionView {
     for (const panel of data.panels) {
       this.panelsEl.appendChild(this.createPanel(panel));
     }
+
+    if (data.extraAffordances && data.extraAffordances.length > 0) {
+      const section = document.createElement("section");
+      section.className = "projection-panel";
+
+      const heading = document.createElement("h2");
+      heading.className = "projection-panel-title";
+      heading.textContent = "Actions";
+      section.appendChild(heading);
+
+      const list = document.createElement("div");
+      list.className = "projection-panel-items";
+
+      for (const aff of data.extraAffordances) {
+        const btn = document.createElement("button");
+        btn.className = "projection-item-btn";
+
+        if (aff.targetKindStyle?.icon) {
+          const icon = document.createElement("span");
+          icon.className = "projection-item-icon";
+          icon.textContent = aff.targetKindStyle.icon;
+          btn.appendChild(icon);
+        }
+
+        const label = document.createElement("span");
+        label.className = "projection-item-label";
+        label.textContent = `${aff.actionLabel} → ${aff.targetText || "(empty)"}`;
+        btn.appendChild(label);
+
+        if (aff.targetKindStyle?.color) {
+          btn.style.borderLeftColor = aff.targetKindStyle.color;
+        }
+        if (aff.actionDescription) {
+          btn.title = aff.actionDescription;
+        }
+
+        btn.addEventListener("click", () => {
+          this.events.onAffordance?.(aff.actionId, aff.targetCardId);
+        });
+
+        list.appendChild(btn);
+      }
+
+      section.appendChild(list);
+      this.panelsEl.appendChild(section);
+    }
   }
 
   private createPanel(panel: PanelDef): HTMLElement {
@@ -180,6 +227,25 @@ export class ProjectionView {
       label.className = "projection-item-label";
       label.textContent = item.text || "(empty)";
       btn.appendChild(label);
+
+      if (item.affordances && item.affordances.length > 0) {
+        const actions = document.createElement("span");
+        actions.className = "projection-item-actions";
+        for (const aff of item.affordances) {
+          const actionBtn = document.createElement("button");
+          actionBtn.className = "projection-action-btn";
+          actionBtn.textContent = aff.actionLabel;
+          if (aff.actionDescription) {
+            actionBtn.title = aff.actionDescription;
+          }
+          actionBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            this.events.onAffordance?.(aff.actionId, aff.targetCardId);
+          });
+          actions.appendChild(actionBtn);
+        }
+        btn.appendChild(actions);
+      }
 
       if (item.kindStyle?.color) {
         btn.style.borderLeftColor = item.kindStyle.color;

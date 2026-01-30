@@ -12,6 +12,9 @@ import { TabBar } from "./tab-bar";
 import type { TabMode } from "./tab-bar";
 import { ProjectionView } from "./projection-view";
 import { buildProjectionData } from "../projection";
+import { buildAffordances, getAffordancesForCard } from "../affordance";
+import { EventLog } from "../event-log";
+import { executeAction } from "../action";
 import { createCardElement, updateCardElement, startEditing } from "./card-node";
 import type { CardNodeEvents } from "./card-node";
 import { createEdgeGroup, updateEdgeGroup, ensureArrowDefs } from "./edge-line";
@@ -55,6 +58,7 @@ export class App {
   private packInfoPanel: PackInfoPanel;
   private mode: TabMode = "graph";
   private projectionView: ProjectionView;
+  private eventLog: EventLog;
   private container: HTMLElement;
 
   constructor(container: HTMLElement, graph: CardGraph, bundle: YDocBundle, presence: Presence, packStore: WorldPackStore) {
@@ -67,6 +71,7 @@ export class App {
     this.tabBar = new TabBar();
     container.appendChild(this.tabBar.el);
     this.canvas = new Canvas(container);
+    this.eventLog = new EventLog(bundle);
     this.projectionView = new ProjectionView({
       onNavigate: (cardId) => {
         this.navigator.jumpTo(cardId);
@@ -75,6 +80,9 @@ export class App {
       onEditText: (cardId, newText) => {
         this.history.capture();
         this.editor.setText(cardId, newText);
+      },
+      onAffordance: (actionId, targetCardId) => {
+        this.executeAffordance(actionId, targetCardId);
       },
     });
     container.appendChild(this.projectionView.el);
@@ -389,6 +397,18 @@ export class App {
   private renderProjection(): void {
     const currentId = this.navigator.current?.id ?? null;
     const data = currentId ? buildProjectionData(currentId, this.graph, this.packStore) : null;
+    if (data) {
+      const affordances = buildAffordances(data.cardId, this.graph, this.packStore);
+      const connectedIds = new Set(data.panels.flatMap((p) => p.items.map((i) => i.cardId)));
+      for (const panel of data.panels) {
+        for (const item of panel.items) {
+          const itemAffs = getAffordancesForCard(affordances, item.cardId);
+          if (itemAffs.length > 0) item.affordances = itemAffs;
+        }
+      }
+      const extra = affordances.filter((a) => !connectedIds.has(a.targetCardId));
+      if (extra.length > 0) data.extraAffordances = extra;
+    }
     this.projectionView.render(data);
     this.renderProjectionPresence();
   }
@@ -441,6 +461,16 @@ export class App {
       return;
     }
     this.projectionView.renderPresence(this.presence.getPeersOnCard(currentId));
+  }
+
+  private executeAffordance(actionId: string, targetCardId: string): void {
+    const contextId = this.navigator.current?.id;
+    if (!contextId) return;
+    const action = this.packStore.getAction(actionId);
+    if (!action) return;
+    this.history.capture();
+    const actor = this.presence.getLocalIdentity().name;
+    executeAction(action, this.graph, this.packStore, contextId, targetCardId, this.eventLog, actor);
   }
 
   private renderMinimap(): void {

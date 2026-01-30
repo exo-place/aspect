@@ -51,10 +51,19 @@ Key modules:
 A second UI mode that renders the graph as a **place** rather than a diagram. The current card becomes a location description with panels derived from its edges, categorized by edge type from the world pack. Both modes share all state; switching hides one, shows the other.
 
 Key modules:
-- `src/projection-types.ts` — `PanelItem`, `PanelDef`, `ProjectionData` interfaces
+- `src/projection-types.ts` — `PanelItem`, `PanelDef`, `ProjectionData` interfaces (with optional `affordances` and `extraAffordances`)
 - `src/projection.ts` — `buildProjectionData()` pure function (pack-driven panel mapping)
-- `src/ui/projection-view.ts` — `ProjectionView` DOM renderer (location header, panels, presence)
+- `src/ui/projection-view.ts` — `ProjectionView` DOM renderer (location header, panels, affordance buttons, presence)
 - `src/ui/tab-bar.ts` — `TabBar` component (Build/Experience tabs, `TabMode` type)
+
+### Affordance Discovery
+
+Connects the action system to the projection layer. For each action in the world pack, evaluates preconditions against the current graph state and surfaces available actions as buttons in the experiential view. Inline buttons appear on connected panel items; a separate "Actions" panel shows actions targeting non-connected cards.
+
+Key modules:
+- `src/affordance-types.ts` — `Affordance` interface (action + target card metadata)
+- `src/affordance.ts` — `buildAffordances()` evaluator, `getAffordancesForCard()` filter helper
+- `src/ui/app.ts` — `executeAffordance()` wires click → `executeAction()` → reactive re-render
 
 ### Snapshots
 

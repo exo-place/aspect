@@ -903,6 +903,30 @@ html, body {
   white-space: nowrap;
 }
 
+.projection-item-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.projection-action-btn {
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #7c9cff;
+  background: transparent;
+  border: 1px solid #7c9cff;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.projection-action-btn:hover {
+  background: #7c9cff;
+  color: #111;
+}
+
 /* Projection presence */
 .projection-presence {
   margin-top: 24px;

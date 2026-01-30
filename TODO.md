@@ -87,12 +87,12 @@ The experiential UI — graph rendered as place, not diagram. Routing: **tabs** 
 
 Connect actions to projection. The world shows you what you can do.
 
-- [ ] **Affordance evaluator** — for each action in world pack, evaluate preconditions against graph neighborhood
-- [ ] **Affordance rendering** — surface available actions as buttons/links in projection panels
-- [ ] **Contextual updates** — re-evaluate affordances on navigation, graph change, pack change
-- [ ] **Affordance grouping** — group by target card, by category, or by action type
-- [ ] **Action execution UI** — click an affordance → execute the action → see the result in projection
-- [ ] **Affordance tests** — test that graph neighborhood + world pack → correct available actions
+- [x] **Affordance evaluator** — `buildAffordances()` in `src/affordance.ts` evaluates all pack actions against graph neighborhood
+- [x] **Affordance rendering** — inline action buttons on panel items + separate "Actions" panel for non-connected targets in `src/ui/projection-view.ts`
+- [x] **Contextual updates** — affordances recompute inside `renderProjection()`, which fires on graph/navigation/pack/selection changes
+- [x] **Affordance grouping** — `getAffordancesForCard()` filter helper; inline on connected items, standalone panel for reachable-but-unconnected
+- [x] **Action execution UI** — `executeAffordance()` in `src/ui/app.ts` wires click → `executeAction()` → graph change → reactive re-render
+- [x] **Affordance tests** — 11 tests in `test/affordance.test.ts` covering empty states, kind filtering, pick-up/drop cycle, multi-target, full lifecycle
 
 ## Tech debt and infrastructure
 
