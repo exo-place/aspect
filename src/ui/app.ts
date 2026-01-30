@@ -16,8 +16,10 @@ import { PresencePanel } from "./presence-panel";
 import { setupKeybinds } from "./keybinds";
 import { SearchOverlay } from "./search";
 import { showKindPicker } from "./kind-picker";
+import { showEdgeTypePicker, autoResolveEdgeType } from "./edge-type-picker";
 import { Minimap } from "./minimap";
 import { SettingsPanel } from "./settings-panel";
+import { PackInfoPanel } from "./pack-info-panel";
 import { SettingsStore } from "../settings";
 import type { EdgeStyle } from "./edge-line";
 import type { YDocBundle } from "../ydoc";
@@ -44,6 +46,8 @@ export class App {
   private cardEvents: CardNodeEvents;
   private ghostEdge: SVGLineElement | null = null;
   private ghostEdgeSource: string | null = null;
+  private liveRegion: HTMLDivElement;
+  private packInfoPanel: PackInfoPanel;
 
   constructor(container: HTMLElement, graph: CardGraph, bundle: YDocBundle, presence: Presence, packStore: WorldPackStore) {
     this.graph = graph;
@@ -74,6 +78,17 @@ export class App {
     );
     this.settings = new SettingsStore();
     this.settingsPanel = new SettingsPanel(this.settings);
+    this.packInfoPanel = new PackInfoPanel(this.packStore, {
+      onImportPack: () => this.importPack(),
+      onExportPack: () => this.exportPack(),
+    });
+
+    // Live region for screen reader announcements
+    this.liveRegion = document.createElement("div");
+    this.liveRegion.setAttribute("aria-live", "polite");
+    this.liveRegion.setAttribute("role", "status");
+    this.liveRegion.className = "sr-live-region";
+    container.appendChild(this.liveRegion);
 
     // Apply initial settings
     this.canvas.minZoom = this.settings.get("minZoom");
@@ -121,6 +136,7 @@ export class App {
       deleteCards: () => this.deleteCards(),
       editCard: (cardId) => this.editCard(cardId),
       setKind: (cardId) => this.showKindPicker(cardId),
+      setEdgeType: () => this.showEdgeTypePickerForSelection(),
       createCard: (worldX, worldY) => this.createCard(worldX, worldY),
       linkCards: () => this.linkCards(),
       unlinkCards: () => this.unlinkCards(),
@@ -134,6 +150,13 @@ export class App {
           this.settingsPanel.close();
         } else {
           this.settingsPanel.open();
+        }
+      },
+      openPackInfo: () => {
+        if (this.packInfoPanel.isOpen) {
+          this.packInfoPanel.close();
+        } else {
+          this.packInfoPanel.open();
         }
       },
       exportGraph: () => this.exportGraph(),
@@ -258,6 +281,10 @@ export class App {
           for (const targetId of targetArr) {
             this.graph.addEdge(sourceCardId, targetId);
           }
+          // Show edge type picker if pack has edge types
+          if (targetArr.length === 1) {
+            this.maybeShowEdgeTypePicker(sourceCardId, targetArr[0], screenX, screenY);
+          }
         } else {
           for (const targetId of targetArr) {
             const edge = this.graph.directEdge(sourceCardId, targetId);
@@ -283,6 +310,9 @@ export class App {
     this.graph.onChange = () => this.render();
     this.navigator.onNavigate = (card) => {
       this.presence.setCurrentCard(card?.id ?? null);
+      if (card) {
+        this.announce(`Navigated to ${card.text || "empty card"}`);
+      }
       this.render();
     };
     this.selection.onChange = () => this.render();
@@ -292,6 +322,10 @@ export class App {
 
   get nav(): Navigator {
     return this.navigator;
+  }
+
+  private announce(message: string): void {
+    this.liveRegion.textContent = message;
   }
 
   render(): void {
@@ -411,6 +445,79 @@ export class App {
     );
   }
 
+  private maybeShowEdgeTypePicker(fromId: string, toId: string, anchorX: number, anchorY: number): void {
+    const pack = this.packStore.get();
+    if (!pack || pack.edgeTypes.length === 0) return;
+
+    const edge = this.graph.directEdge(fromId, toId);
+    if (!edge) return;
+
+    const fromCard = this.graph.getCard(fromId);
+    const toCard = this.graph.getCard(toId);
+    const sourceKind = fromCard?.kind;
+    const targetKind = toCard?.kind;
+
+    // Auto-apply if only one valid type
+    const auto = autoResolveEdgeType(pack.edgeTypes, sourceKind, targetKind, this.packStore);
+    if (auto) {
+      this.history.capture();
+      this.graph.setEdgeType(edge.id, auto.id);
+      return;
+    }
+
+    showEdgeTypePicker(
+      anchorX,
+      anchorY,
+      edge.type,
+      pack.edgeTypes,
+      sourceKind,
+      targetKind,
+      this.packStore,
+      (typeId) => {
+        this.history.capture();
+        this.graph.setEdgeType(edge.id, typeId);
+      },
+    );
+  }
+
+  private showEdgeTypePickerForSelection(): void {
+    const selected = this.selection.toArray();
+    if (selected.length !== 2) return;
+    const [a, b] = selected;
+    const edge = this.graph.edgesFrom(a).find((e) => e.to === b)
+      ?? this.graph.edgesFrom(b).find((e) => e.to === a);
+    if (!edge) return;
+
+    const pack = this.packStore.get();
+    if (!pack || pack.edgeTypes.length === 0) return;
+
+    // Anchor near the midpoint of the two cards
+    const elA = this.cardElements.get(edge.from);
+    const elB = this.cardElements.get(edge.to);
+    if (!elA || !elB) return;
+    const rectA = elA.getBoundingClientRect();
+    const rectB = elB.getBoundingClientRect();
+    const anchorX = (rectA.left + rectB.left) / 2;
+    const anchorY = (rectA.bottom + rectB.bottom) / 2;
+
+    const fromCard = this.graph.getCard(edge.from);
+    const toCard = this.graph.getCard(edge.to);
+
+    showEdgeTypePicker(
+      anchorX,
+      anchorY,
+      edge.type,
+      pack.edgeTypes,
+      fromCard?.kind,
+      toCard?.kind,
+      this.packStore,
+      (typeId) => {
+        this.history.capture();
+        this.graph.setEdgeType(edge.id, typeId);
+      },
+    );
+  }
+
   private createCard(worldX: number, worldY: number): void {
     this.history.capture();
     const card = this.graph.addCard("", { x: worldX - 60, y: worldY - 20 });
@@ -513,6 +620,14 @@ export class App {
     this.history.capture();
     for (const targetId of selected) {
       this.graph.addEdge(currentId, targetId);
+    }
+    // Show edge type picker if pack has edge types and single target
+    if (selected.length === 1) {
+      const targetEl = this.cardElements.get(selected[0]);
+      if (targetEl) {
+        const rect = targetEl.getBoundingClientRect();
+        this.maybeShowEdgeTypePicker(currentId, selected[0], rect.left, rect.bottom + 4);
+      }
     }
   }
 

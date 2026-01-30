@@ -34,8 +34,8 @@
 - [x] **Multi-select delete** — Backspace/Delete removes all selected cards (`removeCards()` in `src/graph.ts`)
 - [x] **Canvas minimap** — overview inset with click-to-navigate (`src/ui/minimap.ts`)
 - [x] **Card resize** — manual width override via drag handle (`setWidth()` in `src/graph.ts`, `src/ui/card-node.ts`)
-- [ ] **Touch support** — pinch-to-zoom, tap-to-select, long-press context menu for mobile/tablet
-- [ ] **Accessibility audit** — ARIA roles on cards/edges, keyboard focus management, screen reader labels
+- [x] **Touch support** — pinch-to-zoom, tap-to-select, long-press context menu for mobile/tablet
+- [x] **Accessibility audit** — ARIA roles on cards/edges, keyboard focus management, screen reader labels
 - [x] **Export/import** — JSON snapshot export/import with validation (`src/snapshot.ts`, `src/file-io.ts`)
 - [x] **Settings UI** — user-configurable settings panel (`src/settings.ts`, `src/ui/settings-panel.ts`, `$mod+,`)
 
@@ -45,9 +45,9 @@ Phase 1 core is complete. Remaining polish:
 
 - [x] **Pack validation** — `validateWorldPack()` in `src/pack-validate.ts`, gates `WorldPackStore.load()`
 - [x] **Pack import/export UI** — upload/download world pack JSON via command palette + context menu
-- [ ] **Edge type picker** — when creating edges, optionally select edge type from active pack
-- [ ] **Kind-aware edge labels** — auto-populate edge label from edge type label when type is set
-- [ ] **Pack info panel** — display loaded pack name/version, allow switching or clearing pack
+- [x] **Edge type picker** — when creating edges, optionally select edge type from active pack
+- [x] **Kind-aware edge labels** — auto-populate edge label from edge type label when type is set
+- [x] **Pack info panel** — display loaded pack name/version, allow switching or clearing pack
 
 ## Phase 2: action system
 

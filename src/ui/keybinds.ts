@@ -12,6 +12,7 @@ export interface KeybindHandlers {
   deleteCards(): void;
   editCard(cardId: string): void;
   setKind(cardId: string): void;
+  setEdgeType(): void;
   createCard(worldX: number, worldY: number): void;
   linkCards(): void;
   unlinkCards(): void;
@@ -19,6 +20,7 @@ export interface KeybindHandlers {
   deselect(): void;
   search(): void;
   openSettings(): void;
+  openPackInfo(): void;
   undo(): void;
   redo(): void;
   navigateDirection(direction: "up" | "down" | "left" | "right"): void;
@@ -65,6 +67,11 @@ const schema = defineSchema({
   "label-edge": {
     label: "Label edge",
     category: "Edit",
+  },
+  "set-edge-type": {
+    label: "Set edge type",
+    category: "Edit",
+    keys: ["T"],
   },
   undo: {
     label: "Undo",
@@ -134,6 +141,10 @@ const schema = defineSchema({
     category: "General",
     keys: ["$mod+,"],
   },
+  "pack-info": {
+    label: "Pack info",
+    category: "General",
+  },
 });
 
 const store = new BindingsStore(schema, "aspect:keybinds");
@@ -168,6 +179,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       "link-cards": () => handlers.linkCards(),
       "unlink-cards": () => handlers.unlinkCards(),
       "label-edge": () => handlers.labelEdge(),
+      "set-edge-type": () => handlers.setEdgeType(),
       undo: () => handlers.undo(),
       redo: () => handlers.redo(),
       "nav-up": () => handlers.navigateDirection("up"),
@@ -185,6 +197,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
         if (el) (el as HTMLElement & { open: boolean }).open = !((el as HTMLElement & { open: boolean }).open);
       },
       settings: () => handlers.openSettings(),
+      "pack-info": () => handlers.openPackInfo(),
     },
     {
       "edit-card": {
@@ -203,6 +216,9 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
         when: (ctx) => (ctx.selectedCount as number) >= 2 && !ctx.isEditing && !ctx.isSettingsOpen,
       },
       "label-edge": {
+        when: (ctx) => (ctx.selectedCount as number) === 2 && !ctx.isEditing && !ctx.isSettingsOpen,
+      },
+      "set-edge-type": {
         when: (ctx) => (ctx.selectedCount as number) === 2 && !ctx.isEditing && !ctx.isSettingsOpen,
       },
       undo: {
@@ -247,6 +263,9 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       settings: {
         captureInput: true,
       },
+      "pack-info": {
+        when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
+      },
     },
   );
 
@@ -259,6 +278,7 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
     "link-cards": "card",
     "unlink-cards": "card",
     "label-edge": "card",
+    "set-edge-type": "card",
     "export-graph": "canvas",
     "import-graph": "canvas",
     "export-pack": "canvas",
@@ -326,12 +346,14 @@ function showContextMenuUI(
 
   const menuEl = document.createElement("div");
   menuEl.className = "context-menu";
+  menuEl.setAttribute("role", "menu");
   menuEl.style.left = `${x}px`;
   menuEl.style.top = `${y}px`;
 
   for (const cmd of filtered) {
     const btn = document.createElement("button");
     btn.className = "context-menu-item";
+    btn.setAttribute("role", "menuitem");
 
     const label = document.createElement("span");
     label.textContent = cmd.label;

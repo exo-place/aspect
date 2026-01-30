@@ -151,6 +151,39 @@ export class CardGraph {
     return this.materializeEdge(id, yEdge);
   }
 
+  setEdgeType(id: string, typeId: string | null): Edge {
+    const yEdge = this.edges.get(id);
+    if (!yEdge) throw new Error(`Edge not found: ${id}`);
+
+    if (typeId !== null && this.packStore) {
+      const fromId = yEdge.get("from") as string;
+      const toId = yEdge.get("to") as string;
+      const fromCard = this.getCard(fromId);
+      const toCard = this.getCard(toId);
+      if (!this.packStore.validateEdge(typeId, fromCard?.kind, toCard?.kind)) {
+        const fk = fromCard?.kind ?? "(none)";
+        const tk = toCard?.kind ?? "(none)";
+        throw new Error("Edge type \"" + typeId + "\" not allowed between kinds \"" + fk + "\" and \"" + tk + "\"");
+      }
+    }
+
+    this.doc.transact(() => {
+      if (typeId === null) {
+        yEdge.delete("type");
+      } else {
+        yEdge.set("type", typeId);
+        // Auto-populate label from edge type if edge has no custom label
+        if (!yEdge.get("label") && this.packStore) {
+          const edgeType = this.packStore.getEdgeType(typeId);
+          if (edgeType?.label) {
+            yEdge.set("label", edgeType.label);
+          }
+        }
+      }
+    });
+    return this.materializeEdge(id, yEdge);
+  }
+
   removeEdge(id: string): void {
     if (!this.edges.has(id)) throw new Error(`Edge not found: ${id}`);
     this.doc.transact(() => {
