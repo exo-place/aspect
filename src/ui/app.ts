@@ -52,8 +52,10 @@ export class App {
   private edgeElements = new Map<string, SVGGElement>();
   private minimap: Minimap;
   private cardEvents: CardNodeEvents;
-  private ghostEdge: SVGLineElement | null = null;
-  private ghostEdgeSource: string | null = null;
+  private ghostEdges: SVGLineElement[] = [];
+  private ghostEdgeSources: string[] = [];
+  private dragPeers: Map<string, { x: number; y: number }> | null = null;
+  private dragPrimaryOrigin: { x: number; y: number } | null = null;
   private liveRegion: HTMLDivElement;
   private packInfoPanel: PackInfoPanel;
   private mode: TabMode = "graph";
@@ -229,6 +231,7 @@ export class App {
 
     this.cardEvents = {
       onClick: (cardId, event) => {
+        this.cleanupDragPeers();
         if (event.shiftKey) {
           this.selection.toggle(cardId);
           if (!this.navigator.current) {
@@ -251,48 +254,93 @@ export class App {
         this.navigator.jumpTo(cardId);
         showContextMenu("card", screenX, screenY, { cardId });
       },
-      onDragStart: () => {},
-      onDrag: () => {
+      onDragStart: (cardId) => {
+        if (this.selection.has(cardId) && this.selection.size > 1) {
+          const primaryEl = this.cardElements.get(cardId);
+          this.dragPrimaryOrigin = primaryEl
+            ? { x: parseFloat(primaryEl.style.left), y: parseFloat(primaryEl.style.top) }
+            : null;
+          this.dragPeers = new Map();
+          for (const id of this.selection.toArray()) {
+            if (id === cardId) continue;
+            const el = this.cardElements.get(id);
+            if (el) {
+              this.dragPeers.set(id, { x: parseFloat(el.style.left), y: parseFloat(el.style.top) });
+              el.classList.add("dragging");
+            }
+          }
+        } else {
+          this.dragPeers = null;
+          this.dragPrimaryOrigin = null;
+        }
+      },
+      onDrag: (_cardId, worldX, worldY) => {
+        if (this.dragPeers && this.dragPrimaryOrigin) {
+          const dx = worldX - this.dragPrimaryOrigin.x;
+          const dy = worldY - this.dragPrimaryOrigin.y;
+          for (const [id, origin] of this.dragPeers) {
+            const el = this.cardElements.get(id);
+            if (el) {
+              el.style.left = `${origin.x + dx}px`;
+              el.style.top = `${origin.y + dy}px`;
+            }
+          }
+        }
         this.renderEdges();
       },
       onDragEnd: (cardId) => {
+        this.history.capture();
         const el = this.cardElements.get(cardId);
         if (el) {
-          this.history.capture();
           this.editor.setPosition(cardId, {
             x: parseFloat(el.style.left),
             y: parseFloat(el.style.top),
           });
         }
+        if (this.dragPeers) {
+          for (const [id] of this.dragPeers) {
+            const peerEl = this.cardElements.get(id);
+            if (peerEl) {
+              peerEl.classList.remove("dragging");
+              this.editor.setPosition(id, {
+                x: parseFloat(peerEl.style.left),
+                y: parseFloat(peerEl.style.top),
+              });
+            }
+          }
+          this.dragPeers = null;
+        }
+        this.dragPrimaryOrigin = null;
       },
       onResize: (cardId, width) => {
         this.history.capture();
         this.graph.setWidth(cardId, width < 0 ? null : width);
       },
       onEdgeDragStart: (sourceCardId) => {
-        this.ghostEdgeSource = sourceCardId;
-        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        line.classList.add("edge-line", "ghost");
-        line.setAttribute("marker-end", "url(#arrow-ghost)");
-        this.canvas.edgeLayer.appendChild(line);
-        this.ghostEdge = line;
+        const sources = [sourceCardId];
+        if (this.selection.has(sourceCardId)) {
+          for (const id of this.selection.toArray()) {
+            if (id !== sourceCardId) sources.push(id);
+          }
+        }
+        this.ghostEdgeSources = sources;
+        this.ghostEdges = [];
+        for (const _ of sources) {
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          line.classList.add("edge-line", "ghost");
+          line.setAttribute("marker-end", "url(#arrow-ghost)");
+          this.canvas.edgeLayer.appendChild(line);
+          this.ghostEdges.push(line);
+        }
       },
-      onEdgeDragMove: (sourceCardId, screenX, screenY) => {
-        if (!this.ghostEdge) return;
-        const fromEl = this.cardElements.get(sourceCardId);
-        if (!fromEl) return;
-        const fromX = parseFloat(fromEl.style.left) || 0;
-        const fromY = parseFloat(fromEl.style.top) || 0;
-        const fhw = (fromEl.offsetWidth || 120) / 2;
-        const fhh = (fromEl.offsetHeight || 40) / 2;
-        const fromCx = fromX + fhw;
-        const fromCy = fromY + fhh;
+      onEdgeDragMove: (_sourceCardId, screenX, screenY) => {
+        if (this.ghostEdges.length === 0) return;
 
         let worldTarget = this.canvas.screenToWorld(screenX, screenY);
 
-        // Snap to target card center if hovering over one
+        // Snap to target card center if hovering over one (exclude all sources)
         const hitEl = document.elementsFromPoint(screenX, screenY)
-          .find((el) => el instanceof HTMLElement && el.dataset.cardId && el.dataset.cardId !== sourceCardId);
+          .find((el) => el instanceof HTMLElement && el.dataset.cardId && !this.ghostEdgeSources.includes(el.dataset.cardId!));
         if (hitEl instanceof HTMLElement && hitEl.dataset.cardId) {
           const tX = parseFloat(hitEl.style.left) || 0;
           const tY = parseFloat(hitEl.style.top) || 0;
@@ -301,49 +349,52 @@ export class App {
           worldTarget = { x: tX + thw, y: tY + thh };
         }
 
-        this.ghostEdge.setAttribute("x1", String(fromCx));
-        this.ghostEdge.setAttribute("y1", String(fromCy));
-        this.ghostEdge.setAttribute("x2", String(worldTarget.x));
-        this.ghostEdge.setAttribute("y2", String(worldTarget.y));
-      },
-      onEdgeDragEnd: (sourceCardId, screenX, screenY) => {
-        if (this.ghostEdge) {
-          this.ghostEdge.remove();
-          this.ghostEdge = null;
+        for (let i = 0; i < this.ghostEdgeSources.length; i++) {
+          const srcId = this.ghostEdgeSources[i];
+          const line = this.ghostEdges[i];
+          const fromEl = this.cardElements.get(srcId);
+          if (!fromEl || !line) continue;
+          const fromX = parseFloat(fromEl.style.left) || 0;
+          const fromY = parseFloat(fromEl.style.top) || 0;
+          const fhw = (fromEl.offsetWidth || 120) / 2;
+          const fhh = (fromEl.offsetHeight || 40) / 2;
+          line.setAttribute("x1", String(fromX + fhw));
+          line.setAttribute("y1", String(fromY + fhh));
+          line.setAttribute("x2", String(worldTarget.x));
+          line.setAttribute("y2", String(worldTarget.y));
         }
-        this.ghostEdgeSource = null;
+      },
+      onEdgeDragEnd: (_sourceCardId, screenX, screenY) => {
+        for (const line of this.ghostEdges) line.remove();
+        const sources = this.ghostEdgeSources;
+        this.ghostEdges = [];
+        this.ghostEdgeSources = [];
 
-        // Find the card under the drop point
+        // Find the card under the drop point (exclude all sources)
+        const sourceSet = new Set(sources);
         const hitEl = document.elementsFromPoint(screenX, screenY)
-          .find((el) => el instanceof HTMLElement && el.dataset.cardId && el.dataset.cardId !== sourceCardId);
+          .find((el) => el instanceof HTMLElement && el.dataset.cardId && !sourceSet.has(el.dataset.cardId!));
         if (!(hitEl instanceof HTMLElement) || !hitEl.dataset.cardId) return;
 
-        const targets = new Set([hitEl.dataset.cardId]);
-        // Also include selected cards (except source and drop target)
-        for (const id of this.selection.toArray()) {
-          if (id !== sourceCardId) targets.add(id);
-        }
-
-        const targetArr = [...targets];
-        const action = resolveEdgeToggle(
-          sourceCardId, targetArr,
-          (a, b) => !!this.graph.directEdge(a, b),
-        );
-
+        const targetId = hitEl.dataset.cardId;
         this.history.capture();
-        if (action === "link") {
-          for (const targetId of targetArr) {
-            this.graph.addEdge(sourceCardId, targetId);
-          }
-          // Show edge type picker if pack has edge types
-          if (targetArr.length === 1) {
-            this.maybeShowEdgeTypePicker(sourceCardId, targetArr[0], screenX, screenY);
-          }
-        } else {
-          for (const targetId of targetArr) {
-            const edge = this.graph.directEdge(sourceCardId, targetId);
+
+        for (const srcId of sources) {
+          const action = resolveEdgeToggle(
+            srcId, [targetId],
+            (a, b) => !!this.graph.directEdge(a, b),
+          );
+          if (action === "link") {
+            this.graph.addEdge(srcId, targetId);
+          } else {
+            const edge = this.graph.directEdge(srcId, targetId);
             if (edge) this.graph.removeEdge(edge.id);
           }
+        }
+
+        // Show edge type picker if single source and pack has edge types
+        if (sources.length === 1) {
+          this.maybeShowEdgeTypePicker(sources[0], targetId, screenX, screenY);
         }
       },
     };
@@ -386,6 +437,17 @@ export class App {
 
   get nav(): Navigator {
     return this.navigator;
+  }
+
+  private cleanupDragPeers(): void {
+    if (this.dragPeers) {
+      for (const [id] of this.dragPeers) {
+        const el = this.cardElements.get(id);
+        if (el) el.classList.remove("dragging");
+      }
+      this.dragPeers = null;
+    }
+    this.dragPrimaryOrigin = null;
   }
 
   private announce(message: string): void {
