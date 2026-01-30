@@ -415,6 +415,18 @@ export class Canvas {
     this.events?.onContextMenu(e.clientX, e.clientY, world.x, world.y);
   }
 
+  zoomBy(factor: number): void {
+    const rect = this.root.getBoundingClientRect();
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    const oldZoom = this.state.zoom;
+    const newZoom = Math.min(this.maxZoom, Math.max(this.minZoom, oldZoom * factor));
+    this.state.panX = cx - (cx - this.state.panX) * (newZoom / oldZoom);
+    this.state.panY = cy - (cy - this.state.panY) * (newZoom / oldZoom);
+    this.state.zoom = newZoom;
+    this.applyTransform();
+  }
+
   resetZoom(): void {
     const rect = this.root.getBoundingClientRect();
     const cx = rect.width / 2;

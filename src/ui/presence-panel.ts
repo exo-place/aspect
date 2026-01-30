@@ -5,6 +5,10 @@ export class PresencePanel {
   private presence: Presence;
   private getCardText: (cardId: string) => string;
   private zoomRow: HTMLDivElement;
+  private zoomLabel: HTMLSpanElement;
+
+  onZoomIn: (() => void) | null = null;
+  onZoomOut: (() => void) | null = null;
 
   constructor(
     container: HTMLElement,
@@ -15,8 +19,29 @@ export class PresencePanel {
     this.getCardText = getCardText;
     this.el = document.createElement("div");
     this.el.className = "presence-panel";
+
     this.zoomRow = document.createElement("div");
     this.zoomRow.className = "presence-zoom-row";
+
+    const minusBtn = document.createElement("button");
+    minusBtn.className = "presence-zoom-btn";
+    minusBtn.textContent = "\u2212";
+    minusBtn.setAttribute("aria-label", "Zoom out");
+    minusBtn.addEventListener("click", () => this.onZoomOut?.());
+
+    this.zoomLabel = document.createElement("span");
+    this.zoomLabel.className = "presence-zoom-label";
+
+    const plusBtn = document.createElement("button");
+    plusBtn.className = "presence-zoom-btn";
+    plusBtn.textContent = "+";
+    plusBtn.setAttribute("aria-label", "Zoom in");
+    plusBtn.addEventListener("click", () => this.onZoomIn?.());
+
+    this.zoomRow.appendChild(minusBtn);
+    this.zoomRow.appendChild(this.zoomLabel);
+    this.zoomRow.appendChild(plusBtn);
+
     container.appendChild(this.el);
   }
 
@@ -29,7 +54,7 @@ export class PresencePanel {
   }
 
   setZoom(zoom: number): void {
-    this.zoomRow.textContent = `${Math.round(zoom * 100)}%`;
+    this.zoomLabel.textContent = `${Math.round(zoom * 100)}%`;
   }
 
   render(): void {
