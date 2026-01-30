@@ -54,6 +54,7 @@ export class App {
   private cardEvents: CardNodeEvents;
   private ghostEdges: SVGLineElement[] = [];
   private ghostEdgeSources: string[] = [];
+  private snapGhosts: SVGLineElement[] = [];
   private dragPeers: Map<string, { x: number; y: number }> | null = null;
   private dragPrimaryOrigin: { x: number; y: number } | null = null;
   private liveRegion: HTMLDivElement;
@@ -345,11 +346,13 @@ export class App {
         if (this.ghostEdges.length === 0) return;
 
         let worldTarget = this.canvas.screenToWorld(screenX, screenY);
+        let snapHitId: string | null = null;
 
         // Snap to target card center if hovering over one (exclude all sources)
         const hitEl = document.elementsFromPoint(screenX, screenY)
           .find((el) => el instanceof HTMLElement && el.dataset.cardId && !this.ghostEdgeSources.includes(el.dataset.cardId!));
         if (hitEl instanceof HTMLElement && hitEl.dataset.cardId) {
+          snapHitId = hitEl.dataset.cardId;
           const tX = parseFloat(hitEl.style.left) || 0;
           const tY = parseFloat(hitEl.style.top) || 0;
           const thw = (hitEl.offsetWidth || 120) / 2;
@@ -357,23 +360,31 @@ export class App {
           worldTarget = { x: tX + thw, y: tY + thh };
         }
 
+        // Update main ghost edges (source → cursor/snap target)
         for (let i = 0; i < this.ghostEdgeSources.length; i++) {
           const srcId = this.ghostEdgeSources[i];
           const line = this.ghostEdges[i];
           const fromEl = this.cardElements.get(srcId);
           if (!fromEl || !line) continue;
-          const fromX = parseFloat(fromEl.style.left) || 0;
-          const fromY = parseFloat(fromEl.style.top) || 0;
-          const fhw = (fromEl.offsetWidth || 120) / 2;
-          const fhh = (fromEl.offsetHeight || 40) / 2;
-          line.setAttribute("x1", String(fromX + fhw));
-          line.setAttribute("y1", String(fromY + fhh));
-          line.setAttribute("x2", String(worldTarget.x));
-          line.setAttribute("y2", String(worldTarget.y));
+          const fc = cardCenter(fromEl);
+          const offset = snapHitId && this.graph.directEdge(snapHitId, srcId) ? 8 : 0;
+          setGhostLinePos(line, fc.x, fc.y, worldTarget.x, worldTarget.y, offset);
+        }
+
+        // Snap ghost edges to other selected cards when hovering on a multi-selection
+        const sourceSet = new Set(this.ghostEdgeSources);
+        if (snapHitId && this.selection.has(snapHitId) && !sourceSet.has(snapHitId)) {
+          const extraTargets = this.selection.toArray().filter(
+            (id) => id !== snapHitId && !sourceSet.has(id),
+          );
+          this.updateSnapGhosts(extraTargets);
+        } else {
+          this.clearSnapGhosts();
         }
       },
       onEdgeDragEnd: (sourceCardId, screenX, screenY) => {
         for (const line of this.ghostEdges) line.remove();
+        this.clearSnapGhosts();
         const allSources = this.ghostEdgeSources;
         this.ghostEdges = [];
         this.ghostEdgeSources = [];
@@ -412,20 +423,24 @@ export class App {
           targets = [hitId];
         }
 
+        // Resolve action uniformly from the primary pair
+        const primaryAction = resolveEdgeToggle(
+          sourceCardId, [hitId],
+          (a, b) => !!this.graph.directEdge(a, b),
+        );
+
         this.history.capture();
         const newEdgeIds: string[] = [];
 
         for (const srcId of sources) {
           for (const tgtId of targets) {
             if (srcId === tgtId) continue;
-            const action = resolveEdgeToggle(
-              srcId, [tgtId],
-              (a, b) => !!this.graph.directEdge(a, b),
-            );
-            if (action === "link") {
-              this.graph.addEdge(srcId, tgtId);
-              const edge = this.graph.directEdge(srcId, tgtId);
-              if (edge) newEdgeIds.push(edge.id);
+            if (primaryAction === "link") {
+              if (!this.graph.directEdge(srcId, tgtId)) {
+                this.graph.addEdge(srcId, tgtId);
+                const edge = this.graph.directEdge(srcId, tgtId);
+                if (edge) newEdgeIds.push(edge.id);
+              }
             } else {
               const edge = this.graph.directEdge(srcId, tgtId);
               if (edge) this.graph.removeEdge(edge.id);
@@ -488,6 +503,42 @@ export class App {
       this.dragPeers = null;
     }
     this.dragPrimaryOrigin = null;
+  }
+
+  private updateSnapGhosts(targetIds: string[]): void {
+    const needed = this.ghostEdgeSources.length * targetIds.length;
+
+    // Grow or shrink ghost line pool
+    while (this.snapGhosts.length < needed) {
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.classList.add("edge-line", "ghost");
+      line.setAttribute("marker-end", "url(#arrow-ghost)");
+      this.canvas.edgeLayer.appendChild(line);
+      this.snapGhosts.push(line);
+    }
+    while (this.snapGhosts.length > needed) {
+      this.snapGhosts.pop()!.remove();
+    }
+
+    let idx = 0;
+    for (const srcId of this.ghostEdgeSources) {
+      const fromEl = this.cardElements.get(srcId);
+      if (!fromEl) { idx += targetIds.length; continue; }
+      const fc = cardCenter(fromEl);
+      for (const tgtId of targetIds) {
+        const line = this.snapGhosts[idx++];
+        const toEl = this.cardElements.get(tgtId);
+        if (!toEl || !line) continue;
+        const tc = cardCenter(toEl);
+        const offset = this.graph.directEdge(tgtId, srcId) ? 8 : 0;
+        setGhostLinePos(line, fc.x, fc.y, tc.x, tc.y, offset);
+      }
+    }
+  }
+
+  private clearSnapGhosts(): void {
+    for (const line of this.snapGhosts) line.remove();
+    this.snapGhosts = [];
   }
 
   private announce(message: string): void {
@@ -1069,4 +1120,36 @@ export class App {
 
     this.renderActiveMode();
   }
+}
+
+function cardCenter(el: HTMLElement): { x: number; y: number } {
+  const x = parseFloat(el.style.left) || 0;
+  const y = parseFloat(el.style.top) || 0;
+  return { x: x + (el.offsetWidth || 120) / 2, y: y + (el.offsetHeight || 40) / 2 };
+}
+
+function setGhostLinePos(
+  line: SVGLineElement,
+  x1: number, y1: number,
+  x2: number, y2: number,
+  offset: number,
+): void {
+  if (offset !== 0) {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy);
+    if (len > 0) {
+      const nx = (-dy / len) * offset;
+      const ny = (dx / len) * offset;
+      line.setAttribute("x1", String(x1 + nx));
+      line.setAttribute("y1", String(y1 + ny));
+      line.setAttribute("x2", String(x2 + nx));
+      line.setAttribute("y2", String(y2 + ny));
+      return;
+    }
+  }
+  line.setAttribute("x1", String(x1));
+  line.setAttribute("y1", String(y1));
+  line.setAttribute("x2", String(x2));
+  line.setAttribute("y2", String(y2));
 }
