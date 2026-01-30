@@ -19,12 +19,21 @@ export class Minimap {
   private panX = 0;
   private panY = 0;
   private currentScale = 1;
-  private isDragging = false;
 
-  // Frozen layout state during drag — prevents bbox recomputation
+  // User pan offset (added on top of auto-centered panX/panY)
+  private userOffsetX = 0;
+  private userOffsetY = 0;
+
+  // Viewport-navigate drag (left-click)
+  private isDragging = false;
   private frozenPanX = 0;
   private frozenPanY = 0;
   private frozenScale = 1;
+
+  // Minimap pan drag (right-click or middle-click)
+  private isPanning = false;
+  private panPointerX = 0;
+  private panPointerY = 0;
 
   // Cached render args for re-render on zoom change
   private lastCards: Card[] = [];
@@ -83,6 +92,9 @@ export class Minimap {
     this.el.appendChild(this.viewport);
     this.el.appendChild(this.controls);
 
+    // Suppress context menu on minimap so right-click drag works
+    this.el.addEventListener("contextmenu", (e) => e.preventDefault());
+
     this.el.addEventListener("wheel", (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -92,12 +104,23 @@ export class Minimap {
     }, { passive: false });
 
     this.el.addEventListener("pointerdown", (e) => {
-      if (e.button !== 0) return;
       // Don't start drag from control buttons
       if ((e.target as HTMLElement).closest(".minimap-controls")) return;
       e.stopPropagation();
+
+      // Right-click or middle-click: pan the minimap itself
+      if (e.button === 2 || e.button === 1) {
+        this.isPanning = true;
+        this.panPointerX = e.clientX;
+        this.panPointerY = e.clientY;
+        this.el.setPointerCapture(e.pointerId);
+        return;
+      }
+
+      if (e.button !== 0) return;
+
+      // Left-click: navigate canvas viewport
       this.isDragging = true;
-      // Freeze layout so bbox doesn't recompute during drag
       this.frozenPanX = this.panX;
       this.frozenPanY = this.panY;
       this.frozenScale = this.currentScale;
@@ -106,11 +129,26 @@ export class Minimap {
     });
 
     this.el.addEventListener("pointermove", (e) => {
+      if (this.isPanning) {
+        const dx = e.clientX - this.panPointerX;
+        const dy = e.clientY - this.panPointerY;
+        this.panPointerX = e.clientX;
+        this.panPointerY = e.clientY;
+        this.userOffsetX += dx;
+        this.userOffsetY += dy;
+        this.rerender();
+        return;
+      }
       if (!this.isDragging) return;
       this.navigateTo(e.clientX, e.clientY);
     });
 
     this.el.addEventListener("pointerup", (e) => {
+      if (this.isPanning) {
+        this.isPanning = false;
+        this.el.releasePointerCapture(e.pointerId);
+        return;
+      }
       if (!this.isDragging) return;
       this.isDragging = false;
       this.el.releasePointerCapture(e.pointerId);
@@ -118,6 +156,7 @@ export class Minimap {
     });
 
     this.el.addEventListener("pointercancel", (e) => {
+      this.isPanning = false;
       this.isDragging = false;
       this.el.releasePointerCapture(e.pointerId);
       this.rerender();
@@ -130,14 +169,12 @@ export class Minimap {
     viewportWidth: number,
     viewportHeight: number,
   ): void {
-    // Cache for re-render on zoom
     this.lastCards = cards;
     this.lastCanvasState = canvasState;
     this.lastVpWidth = viewportWidth;
     this.lastVpHeight = viewportHeight;
 
     if (this.isDragging) {
-      // During drag: only update the viewport rect position, don't recompute layout
       this.updateViewportOnly(canvasState, viewportWidth, viewportHeight);
       return;
     }
@@ -171,7 +208,6 @@ export class Minimap {
     }
     this.el.style.display = "";
 
-    // Compute bounding box of all cards
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const card of cards) {
       const w = card.width ?? 120;
@@ -181,7 +217,6 @@ export class Minimap {
       maxY = Math.max(maxY, card.position.y + 40);
     }
 
-    // Include viewport bounds in the bounding box
     const vpLeft = -canvasState.panX / canvasState.zoom;
     const vpTop = -canvasState.panY / canvasState.zoom;
     const vpRight = vpLeft + viewportWidth / canvasState.zoom;
@@ -194,7 +229,6 @@ export class Minimap {
     const worldW = maxX - minX + PADDING * 2;
     const worldH = maxY - minY + PADDING * 2;
 
-    // Fit scale
     const fitScale = Math.min(MINIMAP_WIDTH / worldW, MINIMAP_HEIGHT / worldH);
     const scale = fitScale * this.zoom;
     this.currentScale = scale;
@@ -202,13 +236,12 @@ export class Minimap {
     const offsetX = (MINIMAP_WIDTH - worldW * scale) / 2;
     const offsetY = (MINIMAP_HEIGHT - worldH * scale) / 2;
 
-    this.panX = offsetX - (minX - PADDING) * scale;
-    this.panY = offsetY - (minY - PADDING) * scale;
+    this.panX = offsetX - (minX - PADDING) * scale + this.userOffsetX;
+    this.panY = offsetY - (minY - PADDING) * scale + this.userOffsetY;
 
     this.world.style.transform =
       `translate(${this.panX}px, ${this.panY}px) scale(${scale})`;
 
-    // Reconcile card dots
     const activeIds = new Set<string>();
     for (const card of cards) {
       activeIds.add(card.id);
@@ -231,7 +264,6 @@ export class Minimap {
       }
     }
 
-    // Position viewport indicator
     const vw = viewportWidth / canvasState.zoom;
     const vh = viewportHeight / canvasState.zoom;
     this.viewport.style.left = `${this.panX + vpLeft * scale}px`;
@@ -261,7 +293,6 @@ export class Minimap {
     const mx = clientX - rect.left;
     const my = clientY - rect.top;
 
-    // During drag, use frozen layout so coordinates are stable
     const usePanX = this.isDragging ? this.frozenPanX : this.panX;
     const usePanY = this.isDragging ? this.frozenPanY : this.panY;
     const useScale = this.isDragging ? this.frozenScale : this.currentScale;
