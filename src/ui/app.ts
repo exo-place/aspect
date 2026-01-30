@@ -313,16 +313,16 @@ export class App {
         }
         this.ghostEdgeSource = null;
 
-        // Collect targets: all selected cards (except source) + drop target
-        const targets = new Set(
-          this.selection.toArray().filter((id) => id !== sourceCardId),
-        );
+        // Find the card under the drop point
         const hitEl = document.elementsFromPoint(screenX, screenY)
           .find((el) => el instanceof HTMLElement && el.dataset.cardId && el.dataset.cardId !== sourceCardId);
-        if (hitEl instanceof HTMLElement && hitEl.dataset.cardId) {
-          targets.add(hitEl.dataset.cardId);
+        if (!(hitEl instanceof HTMLElement) || !hitEl.dataset.cardId) return;
+
+        const targets = new Set([hitEl.dataset.cardId]);
+        // Also include selected cards (except source and drop target)
+        for (const id of this.selection.toArray()) {
+          if (id !== sourceCardId) targets.add(id);
         }
-        if (targets.size === 0) return;
 
         const targetArr = [...targets];
         const action = resolveEdgeToggle(
