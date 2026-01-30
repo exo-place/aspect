@@ -387,6 +387,7 @@ export class App {
     const currentId = this.navigator.current?.id ?? null;
     const data = currentId ? buildProjectionData(currentId, this.graph, this.packStore) : null;
     this.projectionView.render(data);
+    this.renderProjectionPresence();
   }
 
   render(): void {
@@ -420,10 +421,23 @@ export class App {
   }
 
   private renderPresence(): void {
+    if (this.mode === "projection") {
+      this.renderProjectionPresence();
+      return;
+    }
     for (const [cardId, el] of this.cardElements) {
       renderPresenceDots(el, this.presence.getPeersOnCard(cardId));
     }
     this.presencePanel.render();
+  }
+
+  private renderProjectionPresence(): void {
+    const currentId = this.navigator.current?.id ?? null;
+    if (!currentId) {
+      this.projectionView.renderPresence([]);
+      return;
+    }
+    this.projectionView.renderPresence(this.presence.getPeersOnCard(currentId));
   }
 
   private renderMinimap(): void {

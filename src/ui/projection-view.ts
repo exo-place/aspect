@@ -1,4 +1,5 @@
 import type { ProjectionData, PanelDef } from "../projection-types";
+import type { PeerState } from "../presence";
 
 export interface ProjectionViewEvents {
   onNavigate(cardId: string): void;
@@ -10,6 +11,7 @@ export class ProjectionView {
   private events: ProjectionViewEvents;
   private headerEl: HTMLDivElement;
   private panelsEl: HTMLDivElement;
+  private presenceEl: HTMLDivElement;
   private emptyEl: HTMLDivElement;
 
   constructor(events: ProjectionViewEvents) {
@@ -26,12 +28,16 @@ export class ProjectionView {
     this.panelsEl = document.createElement("div");
     this.panelsEl.className = "projection-panels";
 
+    this.presenceEl = document.createElement("div");
+    this.presenceEl.className = "projection-presence";
+
     this.emptyEl = document.createElement("div");
     this.emptyEl.className = "projection-empty";
     this.emptyEl.textContent = "No card selected";
 
     this.el.appendChild(this.headerEl);
     this.el.appendChild(this.panelsEl);
+    this.el.appendChild(this.presenceEl);
     this.el.appendChild(this.emptyEl);
   }
 
@@ -39,6 +45,7 @@ export class ProjectionView {
     if (!data) {
       this.headerEl.style.display = "none";
       this.panelsEl.style.display = "none";
+      this.presenceEl.style.display = "none";
       this.emptyEl.style.display = "";
       return;
     }
@@ -49,6 +56,41 @@ export class ProjectionView {
 
     this.renderHeader(data);
     this.renderPanels(data);
+  }
+
+  renderPresence(peers: PeerState[]): void {
+    this.presenceEl.innerHTML = "";
+    if (peers.length === 0) {
+      this.presenceEl.style.display = "none";
+      return;
+    }
+    this.presenceEl.style.display = "";
+
+    const title = document.createElement("h2");
+    title.className = "projection-presence-title";
+    title.textContent = "Who's here";
+    this.presenceEl.appendChild(title);
+
+    const list = document.createElement("div");
+    list.className = "projection-presence-list";
+
+    for (const peer of peers) {
+      const item = document.createElement("span");
+      item.className = "projection-presence-peer";
+
+      const dot = document.createElement("span");
+      dot.className = "presence-dot";
+      dot.style.backgroundColor = peer.color;
+      item.appendChild(dot);
+
+      const name = document.createElement("span");
+      name.textContent = peer.name;
+      item.appendChild(name);
+
+      list.appendChild(item);
+    }
+
+    this.presenceEl.appendChild(list);
   }
 
   private renderHeader(data: ProjectionData): void {
