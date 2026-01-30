@@ -2,18 +2,43 @@ import type { CardGraph } from "./graph";
 import type { WorldPackStore } from "./pack";
 import type { EventLog } from "./event-log";
 import type { ActionDef, ActionData, ActionResult, ActionEvent, CardRef } from "./action-types";
+import type { Edge } from "./types";
 import { apply } from "./json-logic";
+
+export interface EdgeIndex {
+  from: Map<string, Edge[]>;
+  to: Map<string, Edge[]>;
+}
+
+export function buildEdgeIndex(graph: CardGraph): EdgeIndex {
+  const from = new Map<string, Edge[]>();
+  const to = new Map<string, Edge[]>();
+  for (const edge of graph.allEdges()) {
+    let fList = from.get(edge.from);
+    if (!fList) {
+      fList = [];
+      from.set(edge.from, fList);
+    }
+    fList.push(edge);
+    let tList = to.get(edge.to);
+    if (!tList) {
+      tList = [];
+      to.set(edge.to, tList);
+    }
+    tList.push(edge);
+  }
+  return { from, to };
+}
 
 export function buildActionData(
   graph: CardGraph,
   contextId: string,
   targetId: string,
+  edgeIndex?: EdgeIndex,
 ): ActionData | null {
   const contextCard = graph.getCard(contextId);
   const targetCard = graph.getCard(targetId);
   if (!contextCard || !targetCard) return null;
-
-  const allEdges = graph.allEdges();
 
   const edgesFromContextToTarget: ActionData["edgesFromContextToTarget"] = [];
   const edgesFromTargetToContext: ActionData["edgesFromTargetToContext"] = [];
@@ -25,20 +50,14 @@ export function buildActionData(
   const contextNeighborIds = new Set<string>();
   const targetNeighborIds = new Set<string>();
 
-  for (const edge of allEdges) {
-    if (edge.from === contextId && edge.to === targetId) {
-      edgesFromContextToTarget.push({
-        ...(edge.type !== undefined ? { type: edge.type } : {}),
-        ...(edge.label !== undefined ? { label: edge.label } : {}),
-      });
-    }
-    if (edge.from === targetId && edge.to === contextId) {
-      edgesFromTargetToContext.push({
-        ...(edge.type !== undefined ? { type: edge.type } : {}),
-        ...(edge.label !== undefined ? { label: edge.label } : {}),
-      });
-    }
-    if (edge.from === contextId) {
+  if (edgeIndex) {
+    for (const edge of edgeIndex.from.get(contextId) ?? []) {
+      if (edge.to === targetId) {
+        edgesFromContextToTarget.push({
+          ...(edge.type !== undefined ? { type: edge.type } : {}),
+          ...(edge.label !== undefined ? { label: edge.label } : {}),
+        });
+      }
       const toCard = graph.getCard(edge.to);
       contextEdgesFrom.push({
         to: edge.to,
@@ -47,7 +66,14 @@ export function buildActionData(
       });
       contextNeighborIds.add(edge.to);
     }
-    if (edge.to === contextId) {
+
+    for (const edge of edgeIndex.to.get(contextId) ?? []) {
+      if (edge.from === targetId) {
+        edgesFromTargetToContext.push({
+          ...(edge.type !== undefined ? { type: edge.type } : {}),
+          ...(edge.label !== undefined ? { label: edge.label } : {}),
+        });
+      }
       const fromCard = graph.getCard(edge.from);
       contextEdgesTo.push({
         from: edge.from,
@@ -56,7 +82,8 @@ export function buildActionData(
       });
       contextNeighborIds.add(edge.from);
     }
-    if (edge.from === targetId) {
+
+    for (const edge of edgeIndex.from.get(targetId) ?? []) {
       const toCard = graph.getCard(edge.to);
       targetEdgesFrom.push({
         to: edge.to,
@@ -65,7 +92,8 @@ export function buildActionData(
       });
       targetNeighborIds.add(edge.to);
     }
-    if (edge.to === targetId) {
+
+    for (const edge of edgeIndex.to.get(targetId) ?? []) {
       const fromCard = graph.getCard(edge.from);
       targetEdgesTo.push({
         from: edge.from,
@@ -73,6 +101,59 @@ export function buildActionData(
         ...(edge.type !== undefined ? { type: edge.type } : {}),
       });
       targetNeighborIds.add(edge.from);
+    }
+  } else {
+    const allEdges = graph.allEdges();
+
+    for (const edge of allEdges) {
+      if (edge.from === contextId && edge.to === targetId) {
+        edgesFromContextToTarget.push({
+          ...(edge.type !== undefined ? { type: edge.type } : {}),
+          ...(edge.label !== undefined ? { label: edge.label } : {}),
+        });
+      }
+      if (edge.from === targetId && edge.to === contextId) {
+        edgesFromTargetToContext.push({
+          ...(edge.type !== undefined ? { type: edge.type } : {}),
+          ...(edge.label !== undefined ? { label: edge.label } : {}),
+        });
+      }
+      if (edge.from === contextId) {
+        const toCard = graph.getCard(edge.to);
+        contextEdgesFrom.push({
+          to: edge.to,
+          ...(toCard?.kind !== undefined ? { toKind: toCard.kind } : {}),
+          ...(edge.type !== undefined ? { type: edge.type } : {}),
+        });
+        contextNeighborIds.add(edge.to);
+      }
+      if (edge.to === contextId) {
+        const fromCard = graph.getCard(edge.from);
+        contextEdgesTo.push({
+          from: edge.from,
+          ...(fromCard?.kind !== undefined ? { fromKind: fromCard.kind } : {}),
+          ...(edge.type !== undefined ? { type: edge.type } : {}),
+        });
+        contextNeighborIds.add(edge.from);
+      }
+      if (edge.from === targetId) {
+        const toCard = graph.getCard(edge.to);
+        targetEdgesFrom.push({
+          to: edge.to,
+          ...(toCard?.kind !== undefined ? { toKind: toCard.kind } : {}),
+          ...(edge.type !== undefined ? { type: edge.type } : {}),
+        });
+        targetNeighborIds.add(edge.to);
+      }
+      if (edge.to === targetId) {
+        const fromCard = graph.getCard(edge.from);
+        targetEdgesTo.push({
+          from: edge.from,
+          ...(fromCard?.kind !== undefined ? { fromKind: fromCard.kind } : {}),
+          ...(edge.type !== undefined ? { type: edge.type } : {}),
+        });
+        targetNeighborIds.add(edge.from);
+      }
     }
   }
 
@@ -109,6 +190,7 @@ export function isActionAvailable(
   packStore: WorldPackStore,
   contextId: string,
   targetId: string,
+  edgeIndex?: EdgeIndex,
 ): boolean {
   // Kind checks (short-circuit)
   if (action.context.kind !== undefined) {
@@ -125,16 +207,18 @@ export function isActionAvailable(
     const direction = action.target.direction ?? "from";
     const fromId = direction === "from" ? contextId : targetId;
     const toId = direction === "from" ? targetId : contextId;
-    const edges = graph.allEdges();
+    const edges = edgeIndex
+      ? (edgeIndex.from.get(fromId) ?? [])
+      : graph.edgesFrom(fromId);
     const hasEdge = edges.some(
-      (e) => e.from === fromId && e.to === toId && e.type === action.target.edgeType,
+      (e) => e.to === toId && e.type === action.target.edgeType,
     );
     if (!hasEdge) return false;
   }
 
   // JSONLogic predicate
   if (action.when !== undefined) {
-    const data = buildActionData(graph, contextId, targetId);
+    const data = buildActionData(graph, contextId, targetId, edgeIndex);
     if (!data) return false;
     try {
       const result = apply(action.when, data as unknown as Record<string, unknown>);
@@ -152,11 +236,13 @@ export function findActionTargets(
   graph: CardGraph,
   packStore: WorldPackStore,
   contextId: string,
+  edgeIndex?: EdgeIndex,
 ): string[] {
+  const idx = edgeIndex ?? buildEdgeIndex(graph);
   const targets: string[] = [];
   for (const card of graph.allCards()) {
     if (card.id === contextId) continue;
-    if (isActionAvailable(action, graph, packStore, contextId, card.id)) {
+    if (isActionAvailable(action, graph, packStore, contextId, card.id, idx)) {
       targets.push(card.id);
     }
   }
@@ -194,13 +280,10 @@ export function executeAction(
         case "removeEdge": {
           const fromId = resolveCardId(effect.from);
           const toId = resolveCardId(effect.to);
-          const edges = graph.allEdges();
-          for (const e of edges) {
-            if (e.from === fromId && e.to === toId) {
-              if (effect.edgeType === undefined || e.type === effect.edgeType) {
-                graph.removeEdge(e.id);
-                break;
-              }
+          for (const e of graph.edgesFrom(fromId)) {
+            if (e.to === toId && (effect.edgeType === undefined || e.type === effect.edgeType)) {
+              graph.removeEdge(e.id);
+              break;
             }
           }
           break;
@@ -229,13 +312,15 @@ export function executeAction(
         }
       }
     }
-  });
 
-  if (eventLog) {
-    for (const event of emittedEvents) {
-      eventLog.append(event);
+    // Append events inside the same Y.js transaction so graph + log are atomic.
+    // EventLog.append() calls doc.transact() internally; Y.js merges nested transactions.
+    if (eventLog) {
+      for (const event of emittedEvents) {
+        eventLog.append(event);
+      }
     }
-  }
+  });
 
   return { success: true, events: emittedEvents };
 }

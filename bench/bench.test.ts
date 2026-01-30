@@ -7,7 +7,7 @@ import { createYDoc, type YDocBundle } from "../src/ydoc";
 import { DEFAULT_PACK } from "../src/default-pack";
 import { buildProjectionData } from "../src/projection";
 import { buildAffordances } from "../src/affordance";
-import { buildActionData, isActionAvailable } from "../src/action";
+import { buildActionData, isActionAvailable, buildEdgeIndex } from "../src/action";
 
 // --- Bench utility ---
 
@@ -212,8 +212,9 @@ describe("performance benchmarks", () => {
         if (world.charIds.length === 0 || world.itemIds.length === 0) return;
         const contextId = world.charIds[0];
         const targetId = world.itemIds[0];
+        const edgeIdx = buildEdgeIndex(world.graph);
         bench("buildActionData", ITERATIONS, () => {
-          buildActionData(world.graph, contextId, targetId);
+          buildActionData(world.graph, contextId, targetId, edgeIdx);
         });
       });
 
@@ -222,8 +223,9 @@ describe("performance benchmarks", () => {
         const action = world.packStore.getAction("pick-up")!;
         const contextId = world.charIds[0];
         const targetId = world.itemIds[1] ?? world.itemIds[0];
+        const edgeIdx = buildEdgeIndex(world.graph);
         bench("isActionAvailable", ITERATIONS, () => {
-          isActionAvailable(action, world.graph, world.packStore, contextId, targetId);
+          isActionAvailable(action, world.graph, world.packStore, contextId, targetId, edgeIdx);
         });
       });
 
