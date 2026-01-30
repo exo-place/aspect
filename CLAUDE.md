@@ -129,7 +129,7 @@ bun install          # Install dependencies
 bun run dev          # Development with watch
 bun run build        # Production build (minified + sourcemaps)
 bun run build:analyze # Bundle size breakdown by module
-bun run check:size   # Build + size budget check (<120 KB gzip)
+bun run check:size   # Build + size budget check (<120 KB gzip, <100 KB brotli)
 bun run lint         # oxlint
 bun run check:types  # TypeScript check
 bun test             # Run tests
