@@ -973,7 +973,6 @@ export class App {
       this.navigator.jumpTo(start.id);
       this.canvas.centerOn(0, 0);
     } else {
-      this.navigator.jumpTo(cards[0].id);
       // Restore viewport: hash > localStorage > center on first card
       const restoredHash = this.canvas.restoreFromHash();
       if (!restoredHash) {
