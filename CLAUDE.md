@@ -94,8 +94,16 @@ Server-side Y.Doc state is persisted to SQLite via `bun:sqlite`. On room creatio
 Key modules:
 - `src/server/persist.ts` — `RoomPersistence` class (SQLite WAL mode, prepared statements, UPSERT)
 - `src/server/debounce.ts` — `DebouncedSaver` class (timer-per-room, flush on demand, destroy all)
+- `src/server/types.ts` — shared server interfaces (`WsData`, `Conn`, `Room`)
+- `src/server/api.ts` — REST API handler (`GET /api/rooms`, `GET /api/rooms/:name`, `DELETE /api/rooms/:name`)
 
 Room lifecycle: connect → load from SQLite → sync → debounced saves → flush on last disconnect → destroy in memory.
+
+### Room Management
+
+Lobby page (`public/lobby.html`) lists rooms with activity status, relative timestamps, and connection counts. Rooms can be created by navigating to `/room/:name` or deleted via the lobby. REST API merges persisted (SQLite) and in-memory active rooms. `destroyRoom()` in `server.ts` handles connection teardown on deletion.
+
+Routing: `/` → lobby, `/room/*` → SPA fallback, `/api/*` → REST API, `/ws/:room` → WebSocket.
 
 ### Multiplayer
 
@@ -119,11 +127,16 @@ Y.js CRDTs are the source of truth for all card/edge/pack/event state. `CardGrap
 nix develop          # Enter dev shell
 bun install          # Install dependencies
 bun run dev          # Development with watch
+bun run build        # Production build (minified + sourcemaps)
+bun run build:analyze # Bundle size breakdown by module
+bun run check:size   # Build + size budget check (<120 KB gzip)
 bun run lint         # oxlint
 bun run check:types  # TypeScript check
 bun test             # Run tests
 cd docs && bun dev   # Local docs
 ```
+
+Production mode: `NODE_ENV=production bun run start` serves from `dist/` with cache headers.
 
 ## Core Rules
 

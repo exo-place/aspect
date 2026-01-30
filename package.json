@@ -7,7 +7,9 @@
   "scripts": {
     "dev": "bun run --watch server.ts",
     "start": "bun run server.ts",
-    "build": "bun build src/index.ts --outdir dist --target browser",
+    "build": "bun run scripts/build.ts",
+    "build:analyze": "bun run scripts/analyze.ts",
+    "check:size": "bun run scripts/check-size.ts",
     "check:types": "tsgo --noEmit",
     "lint": "oxlint",
     "test": "bun test"

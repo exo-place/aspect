@@ -97,10 +97,10 @@ Connect actions to projection. The world shows you what you can do.
 ## Tech debt and infrastructure
 
 - [x] **Server persistence** — server-side Y.Doc persistence via SQLite (`src/server/persist.ts`, `src/server/debounce.ts`)
-- [ ] **Room management** — list rooms, delete rooms, room metadata
+- [x] **Room management** — REST API (`src/server/api.ts`), lobby UI (`public/lobby.html`), room list/detail/delete endpoints
 - [x] **Error boundaries** — graceful handling of CRDT conflicts, WebSocket disconnects, corrupt state
 - [ ] **Performance profiling** — benchmark render loop, DOM reconciliation, and Y.js update handling at scale (100+ cards)
-- [ ] **Bundle optimization** — tree-shake Y.js, lazy-load non-critical UI, measure bundle size
+- [x] **Bundle optimization** — minified build with sourcemaps (`scripts/build.ts`), analyzer (`scripts/analyze.ts`), size budget check (`scripts/check-size.ts`), production serving mode
 - [ ] **E2E tests** — browser-based tests for canvas interaction, multiplayer sync, persistence
 - [x] **CI pipeline** — automated lint + typecheck + test + build on push
 
