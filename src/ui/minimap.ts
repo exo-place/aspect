@@ -114,11 +114,13 @@ export class Minimap {
       if (!this.isDragging) return;
       this.isDragging = false;
       this.el.releasePointerCapture(e.pointerId);
+      this.rerender();
     });
 
     this.el.addEventListener("pointercancel", (e) => {
       this.isDragging = false;
       this.el.releasePointerCapture(e.pointerId);
+      this.rerender();
     });
   }
 
