@@ -1314,6 +1314,9 @@ export class App {
       this.navigator.jumpTo(start.id);
       this.canvas.centerOn(0, 0);
     } else {
+      // Navigate to first card so projection mode has something to show
+      this.navigator.jumpTo(cards[0].id);
+
       // Restore viewport: hash > localStorage > center on first card
       const restoredHash = this.canvas.restoreFromHash();
       if (!restoredHash) {
@@ -1325,6 +1328,11 @@ export class App {
     }
 
     this.canvas.syncHash = true;
+
+    // Build tile tree if me cards exist
+    if (this.meStore.size > 0) {
+      this.rebuildTileTree();
+    }
 
     // Apply default mode from settings
     const defaultMode = this.settings.get("defaultMode");
