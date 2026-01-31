@@ -316,13 +316,12 @@ export class ProjectionView {
       btn.style.borderLeftColor = item.kindStyle.color;
     }
 
-    // Click = toggle expand (only if item has edges), double-click = drill-down
+    // Click = toggle expand (only if item has edges); no-op on leaf items
     btn.addEventListener("click", () => {
       if (this.events.onToggleExpand && item.hasEdges) {
         this.events.onToggleExpand(item.cardId);
-      } else if (this.events.onDrillDown) {
-        this.events.onDrillDown(item.cardId);
-      } else {
+      } else if (!this.events.onToggleExpand) {
+        // Legacy/fallback: navigate when expand not supported
         this.events.onNavigate(item.cardId);
       }
     });

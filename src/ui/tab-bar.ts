@@ -4,7 +4,7 @@ export class TabBar {
   readonly el: HTMLDivElement;
   private graphBtn: HTMLButtonElement;
   private projectionBtn: HTMLButtonElement;
-  private mode: TabMode = "graph";
+  private mode: TabMode = "projection";
 
   onModeChange: ((mode: TabMode) => void) | null = null;
   onSettingsClick: (() => void) | null = null;

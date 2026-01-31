@@ -64,7 +64,7 @@ export class App {
   private dragPrimaryOrigin: { x: number; y: number } | null = null;
   private liveRegion: HTMLDivElement;
   private packInfoPanel: PackInfoPanel;
-  private mode: TabMode = "graph";
+  private mode: TabMode = "projection";
   private projectionView: ProjectionView;
   private eventLog: EventLog;
   private container: HTMLElement;
@@ -118,7 +118,6 @@ export class App {
       },
     });
     container.appendChild(this.projectionView.el);
-    this.projectionView.el.style.display = "none";
 
     this.tileLayout = new TileLayout({
       onToggleExpand: (paneId, cardId) => this.onTileToggleExpand(paneId, cardId),
@@ -150,6 +149,7 @@ export class App {
       presence,
       (cardId) => this.graph.getCard(cardId)?.text ?? "",
     );
+    this.presencePanel.hide();
     this.search = new SearchOverlay(
       () => this.graph.allCards(),
       {
@@ -217,11 +217,12 @@ export class App {
       if (edgeId) this.showEdgeTypePickerById(edgeId, e.clientX, e.clientY);
     });
 
+    // Initial DOM: projection mode (canvas + minimap hidden)
+    this.canvas.root.style.display = "none";
+
     this.minimap = new Minimap();
     container.appendChild(this.minimap.el);
-    if (!this.settings.get("showMinimap")) {
-      this.minimap.el.style.display = "none";
-    }
+    this.minimap.el.style.display = "none";
     this.minimap.onClick = (worldX, worldY) => {
       this.canvas.centerOn(worldX, worldY);
     };
