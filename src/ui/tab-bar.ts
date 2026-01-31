@@ -17,8 +17,8 @@ export class TabBar {
     this.graphBtn = this.createTab("Build", "graph");
     this.projectionBtn = this.createTab("Experience", "projection");
 
-    this.el.appendChild(this.graphBtn);
     this.el.appendChild(this.projectionBtn);
+    this.el.appendChild(this.graphBtn);
 
     // Spacer to push gear button to the right
     const spacer = document.createElement("div");

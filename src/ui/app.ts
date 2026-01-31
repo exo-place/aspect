@@ -1327,7 +1327,7 @@ export class App {
 
     // Apply default mode from settings
     const defaultMode = this.settings.get("defaultMode");
-    if (defaultMode !== "graph") {
+    if (defaultMode !== this.mode) {
       this.setMode(defaultMode);
     }
 

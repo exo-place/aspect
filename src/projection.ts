@@ -37,6 +37,7 @@ export function buildProjectionData(
     };
     if (target.kind) item.kind = target.kind;
     if (targetKind?.style) item.kindStyle = targetKind.style;
+    if (graph.edgesFrom(target.id).length > 0) item.hasEdges = true;
     if (!outByType.has(typeKey)) outByType.set(typeKey, []);
     outByType.get(typeKey)!.push(item);
   }
@@ -55,6 +56,7 @@ export function buildProjectionData(
     };
     if (source.kind) item.kind = source.kind;
     if (sourceKind?.style) item.kindStyle = sourceKind.style;
+    if (graph.edgesFrom(source.id).length > 0) item.hasEdges = true;
     if (!inByType.has(typeKey)) inByType.set(typeKey, []);
     inByType.get(typeKey)!.push(item);
   }

@@ -50,7 +50,7 @@ export const SETTINGS_SCHEMA: Record<string, SettingDef> = {
     control: { type: "number", min: 1.0, max: 10.0, step: 0.5 },
   },
   defaultMode: {
-    default: "graph" as TabMode,
+    default: "projection" as TabMode,
     label: "Default mode",
     section: "General",
     description: "Which tab to show on startup",

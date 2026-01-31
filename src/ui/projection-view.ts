@@ -195,6 +195,8 @@ export class ProjectionView {
     this.panelsEl.innerHTML = "";
 
     for (const panel of data.panels) {
+      // Hide incoming panels in experience mode
+      if (panel.direction === "to") continue;
       this.panelsEl.appendChild(this.createPanel(panel));
     }
 
@@ -270,18 +272,14 @@ export class ProjectionView {
     const btn = document.createElement("button");
     btn.className = "projection-item-btn";
 
-    // Expand toggle (if handlers are present)
-    if (this.events.onToggleExpand) {
-      const expandBtn = document.createElement("button");
-      expandBtn.className = "projection-expand-btn";
-      expandBtn.textContent = item.subData ? "\u25BC" : "\u25B6";
-      expandBtn.title = item.subData ? "Collapse" : "Expand";
-      expandBtn.addEventListener("click", (e) => {
-        e.stopPropagation();
-        this.events.onToggleExpand!(item.cardId);
-      });
-      btn.appendChild(expandBtn);
+    // Expand indicator — takes up space but invisible when item has no outgoing edges
+    const expandIndicator = document.createElement("span");
+    expandIndicator.className = "projection-expand-btn";
+    if (!item.hasEdges) {
+      expandIndicator.style.visibility = "hidden";
     }
+    expandIndicator.textContent = item.subData ? "\u25BC" : "\u25B6";
+    btn.appendChild(expandIndicator);
 
     if (item.kindStyle?.icon) {
       const icon = document.createElement("span");
@@ -318,7 +316,19 @@ export class ProjectionView {
       btn.style.borderLeftColor = item.kindStyle.color;
     }
 
+    // Click = toggle expand (only if item has edges), double-click = drill-down
     btn.addEventListener("click", () => {
+      if (this.events.onToggleExpand && item.hasEdges) {
+        this.events.onToggleExpand(item.cardId);
+      } else if (this.events.onDrillDown) {
+        this.events.onDrillDown(item.cardId);
+      } else {
+        this.events.onNavigate(item.cardId);
+      }
+    });
+
+    btn.addEventListener("dblclick", (e) => {
+      e.preventDefault();
       if (this.events.onDrillDown) {
         this.events.onDrillDown(item.cardId);
       } else {
@@ -333,6 +343,8 @@ export class ProjectionView {
       const nested = document.createElement("div");
       nested.className = "projection-nested";
       for (const panel of item.subData.panels) {
+        // Only show outgoing panels in nested views too
+        if (panel.direction === "to") continue;
         nested.appendChild(this.createPanel(panel));
       }
       container.appendChild(nested);

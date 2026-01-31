@@ -8,6 +8,8 @@ export interface PanelItem {
   kindStyle?: KindStyle;
   affordances?: Affordance[];
   subData?: ProjectionData;
+  /** Whether the item's card has any outgoing edges (for expand indicator). */
+  hasEdges?: boolean;
 }
 
 export interface PanelDef {
