@@ -30,6 +30,8 @@ export interface KeybindHandlers {
   importGraph(): void;
   exportPack(): void;
   importPack(): void;
+  toggleMe(cardId: string): void;
+  isMe(cardId: string): boolean;
   getCurrentCardId(): string | null;
   getSelectedCount(): number;
   getViewportCenter(): { x: number; y: number };
@@ -152,6 +154,16 @@ const schema = defineSchema({
     category: "General",
     keys: ["$mod+."],
   },
+  "mark-me": {
+    label: "Mark as me",
+    category: "Identity",
+    keys: ["M"],
+  },
+  "unmark-me": {
+    label: "Unmark me",
+    category: "Identity",
+    keys: ["M"],
+  },
   "reset-zoom": {
     label: "Reset zoom to 100%",
     category: "Navigation",
@@ -212,6 +224,8 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       settings: () => handlers.openSettings(),
       "pack-info": () => handlers.openPackInfo(),
       "cycle-mode": () => handlers.cycleMode(),
+      "mark-me": (ctx) => handlers.toggleMe(ctx.cardId as string),
+      "unmark-me": (ctx) => handlers.toggleMe(ctx.cardId as string),
     },
     {
       "edit-card": {
@@ -286,6 +300,12 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
       "cycle-mode": {
         when: (ctx) => !ctx.isEditing && !ctx.isSettingsOpen,
       },
+      "mark-me": {
+        when: (ctx) => ctx.cardId != null && !ctx.isMe && !ctx.isEditing && !ctx.isSettingsOpen,
+      },
+      "unmark-me": {
+        when: (ctx) => ctx.cardId != null && !!ctx.isMe && !ctx.isEditing && !ctx.isSettingsOpen,
+      },
     },
   );
 
@@ -303,6 +323,8 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
     "import-graph": "canvas",
     "export-pack": "canvas",
     "import-pack": "canvas",
+    "mark-me": "card",
+    "unmark-me": "card",
   };
   for (const cmd of commands) {
     const menu = menuTags[cmd.id];
@@ -322,13 +344,17 @@ export function setupKeybinds(handlers: KeybindHandlers): SetupResult {
   settings.store = store;
   document.body.appendChild(settings);
 
-  const getContext = () => ({
-    cardId: handlers.getCurrentCardId(),
-    selectedCount: handlers.getSelectedCount(),
-    isEditing: !!document.querySelector(".card-editor"),
-    isSearching: !!document.querySelector(".search-overlay"),
-    isSettingsOpen: handlers.isSettingsOpen(),
-  });
+  const getContext = () => {
+    const cardId = handlers.getCurrentCardId();
+    return {
+      cardId,
+      selectedCount: handlers.getSelectedCount(),
+      isEditing: !!document.querySelector(".card-editor"),
+      isSearching: !!document.querySelector(".search-overlay"),
+      isSettingsOpen: handlers.isSettingsOpen(),
+      isMe: cardId ? handlers.isMe(cardId) : false,
+    };
+  };
 
   const cleanup = keybinds(commands, getContext);
 

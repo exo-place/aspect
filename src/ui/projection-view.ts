@@ -1,15 +1,23 @@
-import type { ProjectionData, PanelDef } from "../projection-types";
+import type { ProjectionData, PanelDef, PanelItem } from "../projection-types";
 import type { PeerState } from "../presence";
 
 export interface ProjectionViewEvents {
   onNavigate(cardId: string): void;
   onEditText(cardId: string, newText: string): void;
   onAffordance?(actionId: string, targetCardId: string): void;
+  onToggleExpand?(cardId: string): void;
+  onDrillDown?(cardId: string): void;
+}
+
+export interface BreadcrumbEntry {
+  cardId: string;
+  label: string;
 }
 
 export class ProjectionView {
   readonly el: HTMLDivElement;
   private events: ProjectionViewEvents;
+  private breadcrumbEl: HTMLDivElement;
   private headerEl: HTMLDivElement;
   private panelsEl: HTMLDivElement;
   private presenceEl: HTMLDivElement;
@@ -22,6 +30,10 @@ export class ProjectionView {
     this.el.className = "projection-view";
     this.el.setAttribute("role", "region");
     this.el.setAttribute("aria-label", "Projection view");
+
+    this.breadcrumbEl = document.createElement("div");
+    this.breadcrumbEl.className = "projection-breadcrumbs";
+    this.breadcrumbEl.style.display = "none";
 
     this.headerEl = document.createElement("div");
     this.headerEl.className = "projection-header";
@@ -36,14 +48,16 @@ export class ProjectionView {
     this.emptyEl.className = "projection-empty";
     this.emptyEl.textContent = "No card selected";
 
+    this.el.appendChild(this.breadcrumbEl);
     this.el.appendChild(this.headerEl);
     this.el.appendChild(this.panelsEl);
     this.el.appendChild(this.presenceEl);
     this.el.appendChild(this.emptyEl);
   }
 
-  render(data: ProjectionData | null): void {
+  render(data: ProjectionData | null, breadcrumbs?: BreadcrumbEntry[], onBreadcrumb?: (index: number) => void): void {
     if (!data) {
+      this.breadcrumbEl.style.display = "none";
       this.headerEl.style.display = "none";
       this.panelsEl.style.display = "none";
       this.presenceEl.style.display = "none";
@@ -55,6 +69,7 @@ export class ProjectionView {
     this.headerEl.style.display = "";
     this.panelsEl.style.display = "";
 
+    this.renderBreadcrumbs(breadcrumbs, onBreadcrumb);
     this.renderHeader(data);
     this.renderPanels(data);
   }
@@ -92,6 +107,37 @@ export class ProjectionView {
     }
 
     this.presenceEl.appendChild(list);
+  }
+
+  private renderBreadcrumbs(breadcrumbs?: BreadcrumbEntry[], onBreadcrumb?: (index: number) => void): void {
+    this.breadcrumbEl.innerHTML = "";
+    if (!breadcrumbs || breadcrumbs.length <= 1) {
+      this.breadcrumbEl.style.display = "none";
+      return;
+    }
+    this.breadcrumbEl.style.display = "";
+
+    for (let i = 0; i < breadcrumbs.length; i++) {
+      if (i > 0) {
+        const sep = document.createElement("span");
+        sep.className = "projection-breadcrumb-sep";
+        sep.textContent = "\u203A";
+        this.breadcrumbEl.appendChild(sep);
+      }
+
+      const btn = document.createElement("button");
+      btn.className = "projection-breadcrumb-btn";
+      btn.textContent = breadcrumbs[i].label || "(empty)";
+
+      if (i === breadcrumbs.length - 1) {
+        btn.classList.add("current");
+      } else {
+        const idx = i;
+        btn.addEventListener("click", () => onBreadcrumb?.(idx));
+      }
+
+      this.breadcrumbEl.appendChild(btn);
+    }
   }
 
   private renderHeader(data: ProjectionData): void {
@@ -177,7 +223,7 @@ export class ProjectionView {
 
         const label = document.createElement("span");
         label.className = "projection-item-label";
-        label.textContent = `${aff.actionLabel} → ${aff.targetText || "(empty)"}`;
+        label.textContent = `${aff.actionLabel} \u2192 ${aff.targetText || "(empty)"}`;
         btn.appendChild(label);
 
         if (aff.targetKindStyle?.color) {
@@ -213,52 +259,83 @@ export class ProjectionView {
     list.className = "projection-panel-items";
 
     for (const item of panel.items) {
-      const btn = document.createElement("button");
-      btn.className = "projection-item-btn";
-
-      if (item.kindStyle?.icon) {
-        const icon = document.createElement("span");
-        icon.className = "projection-item-icon";
-        icon.textContent = item.kindStyle.icon;
-        btn.appendChild(icon);
-      }
-
-      const label = document.createElement("span");
-      label.className = "projection-item-label";
-      label.textContent = item.text || "(empty)";
-      btn.appendChild(label);
-
-      if (item.affordances && item.affordances.length > 0) {
-        const actions = document.createElement("span");
-        actions.className = "projection-item-actions";
-        for (const aff of item.affordances) {
-          const actionBtn = document.createElement("button");
-          actionBtn.className = "projection-action-btn";
-          actionBtn.textContent = aff.actionLabel;
-          if (aff.actionDescription) {
-            actionBtn.title = aff.actionDescription;
-          }
-          actionBtn.addEventListener("click", (e) => {
-            e.stopPropagation();
-            this.events.onAffordance?.(aff.actionId, aff.targetCardId);
-          });
-          actions.appendChild(actionBtn);
-        }
-        btn.appendChild(actions);
-      }
-
-      if (item.kindStyle?.color) {
-        btn.style.borderLeftColor = item.kindStyle.color;
-      }
-
-      btn.addEventListener("click", () => {
-        this.events.onNavigate(item.cardId);
-      });
-
-      list.appendChild(btn);
+      this.renderItem(item, list);
     }
 
     section.appendChild(list);
     return section;
+  }
+
+  private renderItem(item: PanelItem, container: HTMLElement): void {
+    const btn = document.createElement("button");
+    btn.className = "projection-item-btn";
+
+    // Expand toggle (if handlers are present)
+    if (this.events.onToggleExpand) {
+      const expandBtn = document.createElement("button");
+      expandBtn.className = "projection-expand-btn";
+      expandBtn.textContent = item.subData ? "\u25BC" : "\u25B6";
+      expandBtn.title = item.subData ? "Collapse" : "Expand";
+      expandBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        this.events.onToggleExpand!(item.cardId);
+      });
+      btn.appendChild(expandBtn);
+    }
+
+    if (item.kindStyle?.icon) {
+      const icon = document.createElement("span");
+      icon.className = "projection-item-icon";
+      icon.textContent = item.kindStyle.icon;
+      btn.appendChild(icon);
+    }
+
+    const label = document.createElement("span");
+    label.className = "projection-item-label";
+    label.textContent = item.text || "(empty)";
+    btn.appendChild(label);
+
+    if (item.affordances && item.affordances.length > 0) {
+      const actions = document.createElement("span");
+      actions.className = "projection-item-actions";
+      for (const aff of item.affordances) {
+        const actionBtn = document.createElement("button");
+        actionBtn.className = "projection-action-btn";
+        actionBtn.textContent = aff.actionLabel;
+        if (aff.actionDescription) {
+          actionBtn.title = aff.actionDescription;
+        }
+        actionBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          this.events.onAffordance?.(aff.actionId, aff.targetCardId);
+        });
+        actions.appendChild(actionBtn);
+      }
+      btn.appendChild(actions);
+    }
+
+    if (item.kindStyle?.color) {
+      btn.style.borderLeftColor = item.kindStyle.color;
+    }
+
+    btn.addEventListener("click", () => {
+      if (this.events.onDrillDown) {
+        this.events.onDrillDown(item.cardId);
+      } else {
+        this.events.onNavigate(item.cardId);
+      }
+    });
+
+    container.appendChild(btn);
+
+    // Render nested sub-panels if expanded
+    if (item.subData) {
+      const nested = document.createElement("div");
+      nested.className = "projection-nested";
+      for (const panel of item.subData.panels) {
+        nested.appendChild(this.createPanel(panel));
+      }
+      container.appendChild(nested);
+    }
   }
 }

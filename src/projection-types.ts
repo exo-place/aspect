@@ -7,6 +7,7 @@ export interface PanelItem {
   kind?: string;
   kindStyle?: KindStyle;
   affordances?: Affordance[];
+  subData?: ProjectionData;
 }
 
 export interface PanelDef {

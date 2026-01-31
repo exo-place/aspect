@@ -203,6 +203,7 @@ export function updateCardElement(
   isCurrent: boolean,
   isSelected: boolean,
   kindDef?: KindDef,
+  isMe?: boolean,
 ): void {
   if (!el.classList.contains("dragging")) {
     el.style.left = `${card.position.x}px`;
@@ -238,6 +239,7 @@ export function updateCardElement(
   el.classList.toggle("current", isCurrent);
   el.classList.toggle("selected", isSelected);
   el.classList.toggle("has-kind", !!kindDef);
+  el.classList.toggle("me", !!isMe);
 
   // ARIA state
   const kindLabel = kindDef ? ` (${kindDef.label})` : "";

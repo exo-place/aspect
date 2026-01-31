@@ -1097,6 +1097,209 @@ body[data-sync-status="error"]::after {
   background: #f44336;
 }
 
+/* "Me" card indicator */
+.card.me {
+  box-shadow: 0 0 10px rgba(124, 156, 255, 0.35);
+}
+
+.card.me::after {
+  content: "me";
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #111;
+  background: #7c9cff;
+  padding: 1px 4px;
+  border-radius: 3px;
+  pointer-events: none;
+  line-height: 1.2;
+}
+
+/* Tile layout */
+.tile-layout {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  overflow: hidden;
+}
+
+.tile-split {
+  display: flex;
+  min-height: 0;
+  min-width: 0;
+  flex: 1;
+}
+
+.tile-split--horizontal {
+  flex-direction: row;
+}
+
+.tile-split--vertical {
+  flex-direction: column;
+}
+
+.tile-child {
+  min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+}
+
+.tile-divider {
+  flex-shrink: 0;
+  background: #333;
+  z-index: 2;
+}
+
+.tile-split--horizontal > .tile-divider {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.tile-split--vertical > .tile-divider {
+  height: 4px;
+  cursor: row-resize;
+}
+
+.tile-divider:hover {
+  background: #7c9cff;
+}
+
+.tile-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  flex: 1;
+  border: 1px solid #222;
+}
+
+.tile-pane-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: #161616;
+  border-bottom: 1px solid #333;
+  min-height: 32px;
+  flex-shrink: 0;
+}
+
+.tile-pane-header-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.tile-pane-header-name {
+  font-size: 13px;
+  color: #ccc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.tile-pane-header-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 3px;
+}
+
+.tile-pane-header-btn:hover {
+  color: #e0e0e0;
+  background: #333;
+}
+
+.tile-pane-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.tile-pane-body .projection-view {
+  max-width: none;
+  margin: 0;
+}
+
+/* Projection nested sub-panels */
+.projection-nested {
+  margin-left: 20px;
+  padding-left: 12px;
+  border-left: 2px solid #333;
+  margin-top: 4px;
+  margin-bottom: 8px;
+}
+
+/* Expand toggle on projection items */
+.projection-expand-btn {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  flex-shrink: 0;
+  border-radius: 3px;
+  width: 20px;
+  text-align: center;
+}
+
+.projection-expand-btn:hover {
+  color: #e0e0e0;
+  background: #333;
+}
+
+/* Breadcrumb bar */
+.projection-breadcrumbs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: #888;
+  flex-wrap: wrap;
+}
+
+.projection-breadcrumb-btn {
+  background: none;
+  border: none;
+  color: #7c9cff;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+
+.projection-breadcrumb-btn:hover {
+  background: #333;
+  color: #e0e0e0;
+}
+
+.projection-breadcrumb-btn.current {
+  color: #e0e0e0;
+  cursor: default;
+}
+
+.projection-breadcrumb-btn.current:hover {
+  background: none;
+}
+
+.projection-breadcrumb-sep {
+  color: #555;
+}
+
 /* Screen reader only live region */
 .sr-live-region {
   position: absolute;

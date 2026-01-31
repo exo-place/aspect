@@ -6,6 +6,8 @@ export function buildProjectionData(
   cardId: string,
   graph: CardGraph,
   packStore: WorldPackStore,
+  expandedIds?: Set<string>,
+  visited?: Set<string>,
 ): ProjectionData | null {
   const card = graph.getCard(cardId);
   if (!card) return null;
@@ -102,6 +104,19 @@ export function buildProjectionData(
   };
   if (card.kind) data.kind = card.kind;
   if (kindDef?.style) data.kindStyle = kindDef.style;
+
+  // Recursive inline expansion for items
+  if (expandedIds && expandedIds.size > 0) {
+    const vis = visited ?? new Set<string>();
+    vis.add(cardId);
+    for (const panel of data.panels) {
+      for (const item of panel.items) {
+        if (expandedIds.has(item.cardId) && !vis.has(item.cardId)) {
+          item.subData = buildProjectionData(item.cardId, graph, packStore, expandedIds, vis) ?? undefined;
+        }
+      }
+    }
+  }
 
   return data;
 }

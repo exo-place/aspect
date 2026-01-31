@@ -50,11 +50,29 @@ Key modules:
 
 A second UI mode that renders the graph as a **place** rather than a diagram. The current card becomes a location description with panels derived from its edges, categorized by edge type from the world pack. Both modes share all state; switching hides one, shows the other.
 
+Items in the projection can be **expanded inline** (▶ toggle reveals nested sub-panels beneath) or **drilled down into** (click navigates into the item's full projection, breadcrumbs show path back). Expansion supports recursive nesting with cycle detection. When "me" cards are active, projection mode uses a tiling layout with one pane per identity.
+
 Key modules:
-- `src/projection-types.ts` — `PanelItem`, `PanelDef`, `ProjectionData` interfaces (with optional `affordances` and `extraAffordances`)
-- `src/projection.ts` — `buildProjectionData()` pure function (pack-driven panel mapping)
-- `src/ui/projection-view.ts` — `ProjectionView` DOM renderer (location header, panels, affordance buttons, presence)
+- `src/projection-types.ts` — `PanelItem` (with optional `subData` for recursive inline expansion), `PanelDef`, `ProjectionData` interfaces
+- `src/projection.ts` — `buildProjectionData()` pure function (pack-driven panel mapping, optional `expandedIds`/`visited` for recursive expansion)
+- `src/ui/projection-view.ts` — `ProjectionView` DOM renderer (location header, panels, affordance buttons, expand toggles, drill-down, breadcrumbs, presence)
 - `src/ui/tab-bar.ts` — `TabBar` component (Build/Experience tabs, settings gear button, `TabMode` type)
+
+### "Me" Cards (Identity)
+
+Per-client identity system. Players mark cards as "me" to claim them as their identity in the world. Each "me" card gets its own tile in projection mode. Stored per-room in localStorage.
+
+Key modules:
+- `src/me-store.ts` — `MeStore` class (extends `EventTarget`, per-room `Set<string>` in localStorage, dispatches `"change"`)
+
+### Tile Layout
+
+VS Code-style tiling layout for projection mode when multiple "me" cards are active. Each "me" card gets its own pane with independent navigation (drill-down path + inline expansion). Pure immutable tree data structure with recursive flex-based DOM renderer.
+
+Key modules:
+- `src/tile-types.ts` — `TileLeaf`, `TileSplit`, `TileNode`, `TileLayoutEvents` interfaces
+- `src/tile-tree.ts` — pure functions on immutable `TileNode` trees (`createLeaf`, `splitPane`, `removePane`, `toggleExpanded`, `drillDown`, `breadcrumbTo`, `buildBalancedTree`, `currentCard`)
+- `src/ui/tile-layout.ts` — `TileLayout` DOM renderer (recursive flex containers, draggable dividers, pane headers with home/close buttons)
 
 ### Affordance Discovery
 
@@ -84,7 +102,7 @@ Key modules:
 ### UI Components
 
 - `src/ui/minimap.ts` — `Minimap` class: overview inset showing all cards and viewport, click-to-navigate, independent scroll-to-zoom
-- `src/ui/card-node.ts` — card DOM element creation with drag, resize handle, edge-drag, and editing
+- `src/ui/card-node.ts` — card DOM element creation with drag, resize handle, edge-drag, editing, and "me" badge
 - `src/ui/edge-line.ts` — SVG edge rendering with multiple styles, labels (double-click to edit), arrow markers
 - `src/ui/canvas.ts` — `Canvas` class: pan/zoom, pinch-to-zoom, viewport persistence (localStorage + URL hash `#v=`), shift-drag brush selection
 - `src/viewport-hash.ts` — parse/write `#v=panX,panY,zoom` URL hash for shareable viewport positions

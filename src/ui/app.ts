@@ -33,6 +33,11 @@ import type { YDocBundle } from "../ydoc";
 import { downloadJSON, uploadJSON } from "../file-io";
 import { exportSnapshot, validateSnapshot, importSnapshotReplace } from "../snapshot";
 import { validateWorldPack } from "../pack-validate";
+import { MeStore } from "../me-store";
+import { TileLayout } from "./tile-layout";
+import type { TileNode } from "../tile-types";
+import { buildBalancedTree, allLeaves, currentCard, findLeaf, toggleExpanded, drillDown, breadcrumbTo } from "../tile-tree";
+import type { BreadcrumbEntry } from "./projection-view";
 
 export class App {
   private tabBar: TabBar;
@@ -63,6 +68,13 @@ export class App {
   private projectionView: ProjectionView;
   private eventLog: EventLog;
   private container: HTMLElement;
+  private meStore: MeStore;
+  private tileLayout: TileLayout;
+  private tileTree: TileNode | null = null;
+  /** Track expand state for single (non-tiled) projection view. */
+  private singleExpandedIds = new Set<string>();
+  /** Track drill-down path for single (non-tiled) projection view. */
+  private singlePath: string[] = [];
 
   constructor(container: HTMLElement, graph: CardGraph, bundle: YDocBundle, presence: Presence, packStore: WorldPackStore, roomName?: string) {
     this.container = container;
@@ -78,6 +90,7 @@ export class App {
       this.canvas.setRoomName(roomName);
     }
     this.eventLog = new EventLog(bundle);
+    this.meStore = new MeStore(roomName ?? "default");
     this.projectionView = new ProjectionView({
       onNavigate: (cardId) => {
         this.navigator.jumpTo(cardId);
@@ -90,9 +103,38 @@ export class App {
       onAffordance: (actionId, targetCardId) => {
         this.executeAffordance(actionId, targetCardId);
       },
+      onToggleExpand: (cardId) => {
+        if (this.singleExpandedIds.has(cardId)) {
+          this.singleExpandedIds.delete(cardId);
+        } else {
+          this.singleExpandedIds.add(cardId);
+        }
+        this.renderProjection();
+      },
+      onDrillDown: (cardId) => {
+        this.singlePath.push(cardId);
+        this.singleExpandedIds.clear();
+        this.renderProjection();
+      },
     });
     container.appendChild(this.projectionView.el);
     this.projectionView.el.style.display = "none";
+
+    this.tileLayout = new TileLayout({
+      onToggleExpand: (paneId, cardId) => this.onTileToggleExpand(paneId, cardId),
+      onDrillDown: (paneId, cardId) => this.onTileDrillDown(paneId, cardId),
+      onBreadcrumb: (paneId, index) => this.onTileBreadcrumb(paneId, index),
+      onEditText: (cardId, newText) => {
+        this.history.capture();
+        this.editor.setText(cardId, newText);
+      },
+      onAffordance: (paneId, actionId, targetCardId) => this.executeTileAffordance(paneId, actionId, targetCardId),
+      onClose: (paneId) => this.onTileClose(paneId),
+    });
+    container.appendChild(this.tileLayout.el);
+    this.tileLayout.el.style.display = "none";
+
+    this.meStore.addEventListener("change", () => this.rebuildTileTree());
     this.tabBar.onModeChange = (mode) => this.setMode(mode);
     this.tabBar.onSettingsClick = () => {
       if (this.settingsPanel.isOpen) {
@@ -228,6 +270,8 @@ export class App {
       importGraph: () => this.importGraph(),
       exportPack: () => this.exportPack(),
       importPack: () => this.importPack(),
+      toggleMe: (cardId) => this.meStore.toggle(cardId),
+      isMe: (cardId) => this.meStore.has(cardId),
       deselect: () => {
         this.selection.clear();
         this.navigator.deselect();
@@ -505,7 +549,14 @@ export class App {
       }
     };
 
-    this.graph.onChange = () => this.renderActiveMode();
+    this.graph.onChange = () => {
+      // Prune me-store on graph change (card deletions)
+      if (this.meStore.size > 0) {
+        const validIds = new Set(this.graph.allCards().map((c) => c.id));
+        this.meStore.prune(validIds);
+      }
+      this.renderActiveMode();
+    };
     this.navigator.onNavigate = (card) => {
       this.presence.setCurrentCard(card?.id ?? null);
       if (card) {
@@ -580,15 +631,23 @@ export class App {
     if (mode === "graph") {
       this.canvas.root.style.display = "";
       this.projectionView.el.style.display = "none";
+      this.tileLayout.el.style.display = "none";
       this.minimap.el.style.display = this.settings.get("showMinimap") ? "" : "none";
       this.presencePanel.show();
       this.render();
     } else {
       this.canvas.root.style.display = "none";
-      this.projectionView.el.style.display = "";
       this.minimap.el.style.display = "none";
       this.presencePanel.hide();
-      this.renderProjection();
+      if (this.meStore.size > 0) {
+        this.projectionView.el.style.display = "none";
+        this.tileLayout.el.style.display = "";
+        this.rebuildTileTree();
+      } else {
+        this.tileLayout.el.style.display = "none";
+        this.projectionView.el.style.display = "";
+        this.renderProjection();
+      }
     }
   }
 
@@ -599,14 +658,24 @@ export class App {
   private renderActiveMode(): void {
     if (this.mode === "graph") {
       this.render();
+    } else if (this.meStore.size > 0 && this.tileTree) {
+      this.renderTiledProjection();
     } else {
       this.renderProjection();
     }
   }
 
   private renderProjection(): void {
-    const currentId = this.navigator.current?.id ?? null;
-    const data = currentId ? buildProjectionData(currentId, this.graph, this.packStore) : null;
+    const navId = this.navigator.current?.id ?? null;
+
+    // Sync singlePath to current nav card
+    if (navId && (this.singlePath.length === 0 || this.singlePath[0] !== navId)) {
+      this.singlePath = [navId];
+      this.singleExpandedIds.clear();
+    }
+
+    const viewCardId = this.singlePath.length > 0 ? this.singlePath[this.singlePath.length - 1] : navId;
+    const data = viewCardId ? buildProjectionData(viewCardId, this.graph, this.packStore, this.singleExpandedIds) : null;
     if (data) {
       const affordances = buildAffordances(data.cardId, this.graph, this.packStore);
       const connectedIds = new Set(data.panels.flatMap((p) => p.items.map((i) => i.cardId)));
@@ -619,8 +688,124 @@ export class App {
       const extra = affordances.filter((a) => !connectedIds.has(a.targetCardId));
       if (extra.length > 0) data.extraAffordances = extra;
     }
-    this.projectionView.render(data);
+
+    // Build breadcrumbs
+    const breadcrumbs: BreadcrumbEntry[] = this.singlePath.map((id) => ({
+      cardId: id,
+      label: this.graph.getCard(id)?.text ?? "(deleted)",
+    }));
+
+    this.projectionView.render(data, breadcrumbs, (index) => {
+      this.singlePath = this.singlePath.slice(0, index + 1);
+      this.singleExpandedIds.clear();
+      this.renderProjection();
+    });
     this.renderProjectionPresence();
+  }
+
+  private renderTiledProjection(): void {
+    if (!this.tileTree) return;
+    for (const leaf of allLeaves(this.tileTree)) {
+      const viewCardId = currentCard(leaf);
+      const data = buildProjectionData(viewCardId, this.graph, this.packStore, leaf.expandedIds);
+      if (data) {
+        const affordances = buildAffordances(data.cardId, this.graph, this.packStore);
+        const connectedIds = new Set(data.panels.flatMap((p) => p.items.map((i) => i.cardId)));
+        for (const panel of data.panels) {
+          for (const item of panel.items) {
+            const itemAffs = getAffordancesForCard(affordances, item.cardId);
+            if (itemAffs.length > 0) item.affordances = itemAffs;
+          }
+        }
+        const extra = affordances.filter((a) => !connectedIds.has(a.targetCardId));
+        if (extra.length > 0) data.extraAffordances = extra;
+      }
+
+      const meCard = this.graph.getCard(leaf.meCardId);
+      const meKind = meCard?.kind ? this.packStore.getKind(meCard.kind) : undefined;
+
+      const breadcrumbs: BreadcrumbEntry[] = leaf.path.map((id) => ({
+        cardId: id,
+        label: this.graph.getCard(id)?.text ?? "(deleted)",
+      }));
+
+      this.tileLayout.renderPane(leaf.id, {
+        projection: data,
+        breadcrumbs,
+        meLabel: meCard?.text ?? "(deleted)",
+        meIcon: meKind?.style?.icon,
+        isHome: leaf.path.length <= 1,
+      });
+      this.tileLayout.updatePaneHeader(
+        leaf.id,
+        meCard?.text ?? "(deleted)",
+        meKind?.style?.icon,
+        leaf.path.length <= 1,
+      );
+    }
+  }
+
+  private rebuildTileTree(): void {
+    // Prune deleted cards from meStore
+    const validIds = new Set(this.graph.allCards().map((c) => c.id));
+    this.meStore.prune(validIds);
+
+    const meIds = this.meStore.getAll();
+    if (meIds.length === 0) {
+      this.tileTree = null;
+      if (this.mode === "projection") {
+        this.tileLayout.el.style.display = "none";
+        this.projectionView.el.style.display = "";
+        this.renderProjection();
+      }
+      return;
+    }
+
+    this.tileTree = buildBalancedTree(meIds);
+    this.tileLayout.setTree(this.tileTree);
+
+    if (this.mode === "projection") {
+      this.projectionView.el.style.display = "none";
+      this.tileLayout.el.style.display = "";
+      this.renderTiledProjection();
+    }
+  }
+
+  private onTileToggleExpand(paneId: string, cardId: string): void {
+    if (!this.tileTree) return;
+    this.tileTree = toggleExpanded(this.tileTree, paneId, cardId);
+    this.renderTiledProjection();
+  }
+
+  private onTileDrillDown(paneId: string, cardId: string): void {
+    if (!this.tileTree) return;
+    this.tileTree = drillDown(this.tileTree, paneId, cardId);
+    this.renderTiledProjection();
+  }
+
+  private onTileBreadcrumb(paneId: string, index: number): void {
+    if (!this.tileTree) return;
+    this.tileTree = breadcrumbTo(this.tileTree, paneId, index);
+    this.renderTiledProjection();
+  }
+
+  private executeTileAffordance(paneId: string, actionId: string, targetCardId: string): void {
+    if (!this.tileTree) return;
+    const leaf = findLeaf(this.tileTree, paneId);
+    if (!leaf) return;
+    const contextId = currentCard(leaf);
+    const action = this.packStore.getAction(actionId);
+    if (!action) return;
+    this.history.capture();
+    const actor = this.presence.getLocalIdentity().name;
+    executeAction(action, this.graph, this.packStore, contextId, targetCardId, this.eventLog, actor);
+  }
+
+  private onTileClose(paneId: string): void {
+    if (!this.tileTree) return;
+    const leaf = findLeaf(this.tileTree, paneId);
+    if (!leaf) return;
+    this.meStore.remove(leaf.meCardId);
   }
 
   render(): void {
@@ -638,7 +823,7 @@ export class App {
         this.cardElements.set(card.id, el);
       }
       const kindDef = card.kind ? this.packStore.getKind(card.kind) : undefined;
-      updateCardElement(el, card, card.id === currentId, this.selection.has(card.id), kindDef);
+      updateCardElement(el, card, card.id === currentId, this.selection.has(card.id), kindDef, this.meStore.has(card.id));
       renderPresenceDots(el, this.presence.getPeersOnCard(card.id));
     }
     for (const [id, el] of this.cardElements) {
