@@ -316,18 +316,36 @@ export class ProjectionView {
       btn.style.borderLeftColor = item.kindStyle.color;
     }
 
-    // Click = toggle expand (only if item has edges); no-op on leaf items
-    btn.addEventListener("click", () => {
+    // Click = toggle expand, dblclick = drill down.
+    // Defer toggle by one frame so the second click of a double-click can cancel it
+    // before the DOM is rebuilt (which would kill the dblclick event target).
+    let pendingToggle: number | null = null;
+
+    btn.addEventListener("click", (e) => {
+      if (e.detail >= 2) {
+        // Second click of a double-click — cancel the pending toggle
+        if (pendingToggle !== null) {
+          cancelAnimationFrame(pendingToggle);
+          pendingToggle = null;
+        }
+        return;
+      }
       if (this.events.onToggleExpand && item.hasEdges) {
-        this.events.onToggleExpand(item.cardId);
+        pendingToggle = requestAnimationFrame(() => {
+          pendingToggle = null;
+          this.events.onToggleExpand!(item.cardId);
+        });
       } else if (!this.events.onToggleExpand) {
-        // Legacy/fallback: navigate when expand not supported
         this.events.onNavigate(item.cardId);
       }
     });
 
     btn.addEventListener("dblclick", (e) => {
       e.preventDefault();
+      if (pendingToggle !== null) {
+        cancelAnimationFrame(pendingToggle);
+        pendingToggle = null;
+      }
       if (this.events.onDrillDown) {
         this.events.onDrillDown(item.cardId);
       } else {

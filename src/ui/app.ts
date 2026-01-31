@@ -221,8 +221,10 @@ export class App {
     this.canvas.root.style.display = "none";
 
     this.minimap = new Minimap();
-    container.appendChild(this.minimap.el);
-    this.minimap.el.style.display = "none";
+    this.canvas.root.appendChild(this.minimap.el);
+    if (!this.settings.get("showMinimap")) {
+      this.minimap.el.style.display = "none";
+    }
     this.minimap.onClick = (worldX, worldY) => {
       this.canvas.centerOn(worldX, worldY);
     };
@@ -633,12 +635,10 @@ export class App {
       this.canvas.root.style.display = "";
       this.projectionView.el.style.display = "none";
       this.tileLayout.el.style.display = "none";
-      this.minimap.el.style.display = this.settings.get("showMinimap") ? "" : "none";
       this.presencePanel.show();
       this.render();
     } else {
       this.canvas.root.style.display = "none";
-      this.minimap.el.style.display = "none";
       this.presencePanel.hide();
       if (this.meStore.size > 0) {
         this.projectionView.el.style.display = "none";
