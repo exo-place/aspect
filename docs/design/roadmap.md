@@ -30,59 +30,66 @@ The core graph layer, multiplayer infrastructure, and world pack foundation are 
 - **Kind assignment UI** — dropdown picker via K key or context menu
 - **Edge types** — edges can carry a type referencing an edge type definition
 - **Edge type enforcement** — `addEdge` validates from/to kind constraints when pack and type are present
+- **Edge type picker** — right-click an edge to change its type; multi-edge support
 - **Default world pack** — built-in "Rooms & Items" pack (room/item/character + exit/contains/carries)
+- **Pack schema validation** — malformed world pack JSON is validated on load
+- **Action system** — declarative `when`/`do` language in world packs; JSONLogic predicates; Y.js-integrated execution
+- **Event log** — records action history; replayable
+- **Affordance discovery** — `buildAffordances` evaluates action preconditions against graph neighborhood; O(E + A×candidates×degree) algorithm
+- **Projection layer** — `buildProjectionData` renders graph neighborhood as place with edge-type panels
+- **Tiling layout** — multiple projection panes, each navigating an independent path
+- **"Me" cards** — mark cards as representing you; used as projection navigation anchors
+- **Multi-select** — Shift+click or brush select; multi-select drag, edge creation from all selected cards
+- **Shift+drag to empty space** — creates a new connected card from all selected cards
+- **Graph snapshot export/import** — save and load the full card/edge graph as JSON
+- **Room management REST API** — `GET/DELETE /api/rooms`, `GET /api/rooms/:name`; SQLite-persisted room state
+- **Lobby UI** — server-side room listing page
+- **Minimap panning** — right-click or middle-click drag on the minimap; continuous drag navigation
+- **Zoom controls** — zoom in/out buttons, reset zoom, viewport persistence
+- **Brotli bundle size tracking** — CI checks bundle size against a budget
 
 ## Current Limitations
 
-- **No pack validation** — malformed pack JSON is not validated on load
-- **No edge type picker** — edge types must be assigned programmatically, not via UI
 - **No pack import/export UI** — world packs can only be loaded via code, not uploaded
-- **No projection layer** — the only view is the graph editor (builder mode)
-- **No affordance discovery** — no mechanism to derive available actions from structure
-- **No action system** — no declarative when/do language, no compressed graph transformations
-- **No rules engine** — no validation rules or derivation rules
-- **Single view mode** — graph editor only; no experiential/inhabitation mode
+- **No rules engine** — validation rules or derivation rules not yet implemented
+- **No pack switching UI** — the active world pack cannot be changed via the UI
 
 ## Phases
 
 ### Phase 1: World Pack Format + Loader ✓
 
-Core complete. Kind definitions, edge type definitions, pack loader, CRDT-synced pack storage, kind-aware rendering, edge type enforcement, and default pack all implemented.
+Complete. Kind definitions, edge type definitions, pack loader, CRDT-synced pack storage, kind-aware rendering, edge type enforcement, default pack, schema validation on load, and edge type picker all implemented.
 
-Remaining polish:
-- Pack validation (schema checking on load)
-- Pack import/export UI (file upload/download)
-- Edge type picker in edge creation flow
-- Pack info panel (display loaded pack, switch/clear)
+### Phase 2: Action System ✓
 
-### Phase 2: Action System
+Complete. Declarative action language implemented with JSONLogic predicates.
 
-Implement the declarative action language. Predicate language: JSONLogic.
-
-- `when` predicate evaluator (kind checks, edge existence, field comparisons)
+- `when` predicate evaluator via JSONLogic (`src/json-logic.ts`)
 - `do` effect executor (addEdge, removeEdge, set, emit)
-- Action definitions in world packs
+- Action definitions in world pack format (`actions` array)
 - Action execution integrated with Y.js transactions (atomic, undoable)
-- Action history / event log
+- Action history / event log (`src/event-log.ts`)
+- Affordance evaluation connected to the projection layer
 
-### Phase 3: Projection Layer
+### Phase 3: Projection Layer ✓
 
-Build the experiential UI. Routing: tabs (graph editor and projection as parallel views).
+Complete. Experiential view implemented as a tiling projection layout alongside the graph editor.
 
-- Projection renderer that reads world pack UI hints
-- Edge-type-to-panel mapping (exits → navigation, contains → inventory, etc.)
-- Place rendering (current card as location, not as node)
-- Reactive updates from CRDT changes
-- Tab navigation between graph editor and projection
+- `buildProjectionData` (`src/projection.ts`) — reads graph neighborhood + world pack to produce panel data
+- Edge-type-to-panel mapping (edge types group into named panels)
+- Place rendering: current card as location with outgoing/incoming panels
+- Tiling layout: multiple projection panes side by side, each drilling its own path (`src/tile-tree.ts`)
+- "Me" cards: mark cards as representing you; these become navigation anchors
+- Reactive updates: projection re-renders on graph or pack changes
 
-### Phase 4: Affordance Discovery
+### Phase 4: Affordance Discovery ✓
 
-Connect actions to projection:
+Complete. Actions are connected to the projection layer.
 
-- Evaluate action preconditions against graph neighborhood
-- Surface available actions as UI affordances in projection
-- Contextual affordance updates on navigation
-- Affordance grouping and presentation (per-target, per-category)
+- `buildAffordances` (`src/affordance.ts`) — evaluates action preconditions against graph neighborhood
+- Edge index (`buildEdgeIndex` in `src/action.ts`) — O(E) once per render, O(degree) per lookup
+- Kind grouping — candidate narrowing before JSONLogic evaluation
+- Affordances rendered as actionable UI elements in the projection view
 
 ## Resolved Questions
 

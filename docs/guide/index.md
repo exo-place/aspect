@@ -67,8 +67,8 @@ Aspect is like a MOO, but the primitives are **navigate** and **edit** — not s
 
 See [Philosophy](/philosophy) for the full design rationale.
 
-## What's Next
+## Two Views
 
-The current UI is a graph editor — builder mode, where you see and manipulate the raw structure of cards and edges. This is one half of the experience.
+The graph editor is **builder mode** — you see and manipulate the raw structure of cards and edges directly.
 
-The planned [projection layer](/design/projection) will add an experiential mode: the graph rendered as place, with [affordances](/design/affordances) derived from [world pack](/design/world-packs) definitions. See the [architecture overview](/design/architecture) and [roadmap](/design/roadmap) for details.
+The **projection view** renders the same graph as place: your current card as a location, outgoing edges grouped into named panels (exits, inventory, etc.), and available [affordances](/design/affordances) derived from the active [world pack](/design/world-packs). Switch between views with the tab bar. See [Projection](/design/projection) and the [architecture overview](/design/architecture) for details.

@@ -42,9 +42,13 @@ The mapping is defined in the world pack, not hardcoded. A different world pack 
 
 ## Builder Mode vs Experience Mode
 
-The graph editor that exists today is builder mode. You see the raw graph, manipulate nodes and edges directly, and have full structural control. This is the equivalent of a level editor or a MOO's `@dig` / `@create` commands.
+The graph editor is builder mode. You see the raw graph, manipulate nodes and edges directly, and have full structural control. This is the equivalent of a level editor or a MOO's `@dig` / `@create` commands.
 
-Projection is experience mode. You inhabit the world rather than editing its wiring. The two modes complement each other: build in the editor, experience through projection.
+Projection is experience mode. You inhabit the world rather than editing its wiring. The two modes are available simultaneously as tabs — build in the editor, experience through projection.
+
+## Tiling Layout
+
+The projection view supports multiple panes side by side via a tile-tree layout (`src/tile-tree.ts`). Each pane maintains its own navigation path and expansion state independently, so you can view two different locations at once. Panes can be split horizontally or vertically; removing a pane merges its sibling up.
 
 ## The World Speaks to You
 

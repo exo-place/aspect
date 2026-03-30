@@ -54,24 +54,33 @@ The UI surface that renders experience as **place**, not as diagram. Projection 
 
 ## What Exists Today
 
-The core graph layer, CRDT multiplayer, and Phase 1 world pack support are implemented:
+All five stack layers are implemented. The full pipeline from graph primitives through world pack interpretation to experiential projection with discoverable affordances is working:
 
-- Card/edge data model with `CardGraph` wrapping Y.js shared types
-- Canvas-based graph editor UI (navigator, inline editor, multi-select)
-- IndexedDB persistence via `y-indexeddb`
-- WebSocket multiplayer via `y-websocket` with a Bun server
-- Multiplayer presence (cursors, card-level awareness)
-- Per-client undo/redo via `Y.UndoManager`
-- Edge labels and directional edges
-- Keyboard navigation, search, command palette
-- Installable PWA with offline support
-- World pack format (JSON) with kind definitions and edge type definitions
-- `WorldPackStore` — CRDT-synced pack storage in `Y.Doc`, undoable
-- Card kind assignment with kind-aware rendering (color accent, icon badge)
-- Edge type enforcement (from/to kind constraints validated on `addEdge`)
-- Default "Rooms & Items" world pack
+- **Core graph layer** — `CardGraph` wrapping Y.js shared types; card/edge CRDT model
+- **Canvas-based graph editor** — infinite canvas, pan, zoom, multi-select, drag repositioning, brush select
+- **Inline editor** — double-click to edit, Enter to commit, Shift+Enter for newlines
+- **Edge labels, directional edges, multi-edge support** — edges carry optional type and label; multiple edges between the same pair are supported
+- **Edge type picker** — right-click an edge to assign or change its type
+- **IndexedDB persistence** via `y-indexeddb`
+- **WebSocket multiplayer** via `y-websocket` with a Bun server; per-client undo/redo via `Y.UndoManager`
+- **Multiplayer presence** — cursor positions, card-level awareness
+- **Keyboard navigation, search, command palette** (Ctrl+K)
+- **Installable PWA** with offline support
+- **World pack format** — kinds, edge types, actions (Phase 1+2 format); schema validation on load
+- **`WorldPackStore`** — CRDT-synced pack storage in `Y.Doc`, undoable; default "Rooms & Items" pack
+- **Kind-aware rendering** — color accent, icon badge; edge type enforcement on `addEdge`
+- **Action system** — declarative `when`/`do` language; JSONLogic predicates; execution integrated with Y.js transactions; event log
+- **Affordance discovery** — `buildAffordances` evaluates action preconditions in O(E + A×candidates×degree); results wired into the projection
+- **Projection layer** — `buildProjectionData` renders graph neighborhood as place; edge-type panels (exits, inventory, etc.)
+- **Tiling projection layout** — multiple projection panes, each navigating an independent path (`tile-tree.ts`)
+- **"Me" cards** — per-client identity cards; used as projection anchors
+- **Multi-select** — Shift+click and brush select; multi-select drag; Shift+drag to empty space creates connected cards
+- **Graph snapshot export/import** — full card/edge graph as JSON
+- **Room management REST API** — `GET /api/rooms`, `GET/DELETE /api/rooms/:name`; SQLite-persisted room state; lobby UI
+- **Minimap** — right-click/middle-click drag, continuous navigation, zoom controls, viewport persistence
+- **Brotli bundle size tracking** — CI reports size against a budget
 
-The action system, affordance discovery, and the projection layer are planned. See [Roadmap](./roadmap.md) for the full timeline.
+See [Roadmap](./roadmap.md) for remaining open work.
 
 ## Design Constraints
 

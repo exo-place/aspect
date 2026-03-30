@@ -110,9 +110,9 @@ Each world pack has:
 
 World packs are designed to be shared and distributed independently of the graphs they interpret.
 
-## Implemented Format (Phase 1)
+## Implemented Format
 
-The implemented world pack format covers kinds and edge types. Actions, rules, and fields are Phase 2+.
+The implemented world pack format covers kinds, edge types, and actions. Rules and fields are not yet implemented.
 
 ```typescript
 interface WorldPack {
@@ -122,6 +122,7 @@ interface WorldPack {
   description?: string;
   kinds: KindDef[];
   edgeTypes: EdgeTypeDef[];
+  actions?: ActionDef[];
 }
 
 interface KindDef {
@@ -134,6 +135,20 @@ interface EdgeTypeDef {
   id: string;
   label: string;
   constraint?: { from?: string[]; to?: string[] };
+}
+
+interface ActionDef {
+  id: string;
+  label: string;
+  context: { kind?: string };
+  target: { kind?: string; edgeType?: string };
+  when?: unknown;  // JSONLogic predicate
+  do: EffectDef[];
+}
+
+interface EffectDef {
+  op: "addEdge" | "removeEdge" | "set" | "emit";
+  // ... op-specific fields
 }
 ```
 
@@ -170,19 +185,25 @@ When a `WorldPackStore` is set on `CardGraph`, `addEdge` validates from/to kind 
 - No type on edge → no validation
 - Untyped cards (no kind) pass through constraints
 
-## Future Format (Phase 2+)
+## Action Format
 
-Actions will extend the format:
+Actions are defined in the world pack's `actions` array. Predicates use [JSONLogic](https://jsonlogic.com/) syntax. Effects are a sequence of atomic graph operations.
 
 ```json
 {
-  "actions": {
-    "take": {
-      "target": { "kind": "item" },
-      "when": ["edge(here, target, 'contains')"],
-      "do": ["removeEdge(here, target, 'contains')", "addEdge(self, target, 'contains')"]
+  "actions": [
+    {
+      "id": "take",
+      "label": "Take",
+      "context": {},
+      "target": { "kind": "item", "edgeType": "contains" },
+      "when": { "and": [{ "==": [{ "var": "context.kind" }, "character"] }] },
+      "do": [
+        { "op": "removeEdge", "from": "context", "to": "target", "edgeType": "contains" },
+        { "op": "addEdge", "from": "context", "to": "target", "edgeType": "carries" }
+      ]
     }
-  }
+  ]
 }
 ```
 
