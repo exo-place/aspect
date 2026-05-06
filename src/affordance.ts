@@ -36,6 +36,8 @@ export function buildAffordances(
   const affordances: Affordance[] = [];
 
   for (const action of pack.actions) {
+    const trigger = action.trigger ?? "affordance";
+    if (trigger === "combine") continue;
     if (action.context.kind !== undefined && contextCard.kind !== action.context.kind) {
       continue;
     }
@@ -79,6 +81,42 @@ export function buildAffordances(
           targetCardId: card.id,
           targetText: card.text,
           ...(card.kind !== undefined ? { targetKind: card.kind } : {}),
+          ...(kindDef?.style !== undefined ? { targetKindStyle: kindDef.style } : {}),
+        });
+      }
+    }
+  }
+
+  return affordances;
+}
+
+export function findCombineActions(
+  cardAId: string,
+  cardBId: string,
+  graph: CardGraph,
+  packStore: WorldPackStore,
+): Affordance[] {
+  const pack = packStore.get();
+  if (!pack?.actions) return [];
+  const edgeIndex = buildEdgeIndex(graph);
+  const affordances: Affordance[] = [];
+
+  for (const action of pack.actions) {
+    const trigger = action.trigger ?? "affordance";
+    if (trigger === "affordance") continue;
+
+    for (const [contextId, targetId] of [[cardAId, cardBId], [cardBId, cardAId]] as const) {
+      if (isActionAvailable(action, graph, packStore, contextId, targetId, edgeIndex)) {
+        const targetCard = graph.getCard(targetId);
+        if (!targetCard) continue;
+        const kindDef = targetCard.kind ? packStore.getKind(targetCard.kind) : undefined;
+        affordances.push({
+          actionId: action.id,
+          actionLabel: action.label,
+          ...(action.description !== undefined ? { actionDescription: action.description } : {}),
+          targetCardId: targetId,
+          targetText: targetCard.text,
+          ...(targetCard.kind !== undefined ? { targetKind: targetCard.kind } : {}),
           ...(kindDef?.style !== undefined ? { targetKindStyle: kindDef.style } : {}),
         });
       }

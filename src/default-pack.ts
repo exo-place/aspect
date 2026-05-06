@@ -21,6 +21,7 @@ export const DEFAULT_PACK: WorldPack = {
       description: "Character picks up an item from a shared room",
       context: { kind: "character" },
       target: { kind: "item" },
+      trigger: "both",
       when: ["and",
         ["call", "any", "sharedNeighbors", ["fn", ["n"], ["==", ["get", "n", "kind"], "room"]]],
         ["not", ["call", "any", "edgesFromContextToTarget", ["fn", ["e"], ["==", ["get", "e", "type"], "carries"]]]],

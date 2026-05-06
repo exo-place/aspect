@@ -12,7 +12,8 @@ import { TabBar } from "./tab-bar";
 import type { TabMode } from "./tab-bar";
 import { ProjectionView } from "./projection-view";
 import { buildProjectionData } from "../projection";
-import { buildAffordances, getAffordancesForCard } from "../affordance";
+import { buildAffordances, getAffordancesForCard, findCombineActions } from "../affordance";
+import type { Affordance } from "../affordance-types";
 import { EventLog } from "../event-log";
 import { executeAction } from "../action";
 import { createCardElement, updateCardElement, startEditing } from "./card-node";
@@ -367,6 +368,24 @@ export class App {
           this.dragPeers = null;
         }
         this.dragPrimaryOrigin = null;
+
+        // Check for drag-to-combine: did the dropped card land on another card?
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2;
+          const cy = rect.top + rect.height / 2;
+          const hit = document.elementsFromPoint(cx, cy)
+            .find((e) => e instanceof HTMLElement && e.dataset.cardId && e.dataset.cardId !== cardId);
+          if (hit instanceof HTMLElement && hit.dataset.cardId) {
+            const hitId = hit.dataset.cardId;
+            const actions = findCombineActions(cardId, hitId, this.graph, this.packStore);
+            if (actions.length === 1) {
+              this.executeCombineAction(actions[0].actionId, actions[0].targetCardId, cardId, hitId);
+            } else if (actions.length > 1) {
+              this.showCombinePicker(actions, cx, cy, cardId, hitId);
+            }
+          }
+        }
       },
       onResize: (cardId, width) => {
         this.history.capture();
@@ -1245,6 +1264,52 @@ export class App {
         cancel();
       }
     });
+  }
+
+  private executeCombineAction(actionId: string, targetCardId: string, cardAId: string, cardBId: string): void {
+    const action = this.packStore.getAction(actionId);
+    if (!action) return;
+    const actor = this.presence.getLocalIdentity().name;
+    // contextId is whichever card is NOT the targetCardId
+    const contextId = targetCardId === cardBId ? cardAId : cardBId;
+    executeAction(action, this.graph, this.packStore, contextId, targetCardId, this.eventLog, actor);
+  }
+
+  private showCombinePicker(
+    actions: Affordance[],
+    screenX: number,
+    screenY: number,
+    cardAId: string,
+    cardBId: string,
+  ): void {
+    document.querySelector(".combine-picker")?.remove();
+
+    const picker = document.createElement("div");
+    picker.className = "combine-picker";
+    picker.style.left = `${screenX}px`;
+    picker.style.top = `${screenY}px`;
+
+    for (const aff of actions) {
+      const btn = document.createElement("button");
+      btn.className = "combine-picker-item";
+      btn.textContent = aff.actionLabel;
+      if (aff.actionDescription) btn.title = aff.actionDescription;
+      btn.addEventListener("click", () => {
+        picker.remove();
+        this.executeCombineAction(aff.actionId, aff.targetCardId, cardAId, cardBId);
+      });
+      picker.appendChild(btn);
+    }
+
+    document.body.appendChild(picker);
+
+    const dismiss = (e: PointerEvent) => {
+      if (!picker.contains(e.target as Node)) {
+        picker.remove();
+        document.removeEventListener("pointerdown", dismiss);
+      }
+    };
+    setTimeout(() => document.addEventListener("pointerdown", dismiss), 0);
   }
 
   private exportGraph(): void {

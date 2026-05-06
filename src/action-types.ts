@@ -20,6 +20,7 @@ export interface ActionDef {
   description?: string;
   context: { kind?: string };
   target: ActionTargetDef;
+  trigger?: "affordance" | "combine" | "both";
   when?: unknown;
   do: ActionEffect[];
 }
