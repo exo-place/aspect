@@ -273,7 +273,7 @@ describe("executeAction", () => {
       label: "Rename",
       context: {},
       target: {},
-      run: ["array", ["array", "setText", "context", ["str", "New text"]]],
+      run: ["array", ["array", "setText", "context", ["__lit", "New text"]]],
     };
 
     executeAction(action, graph, packStore, card.id, other.id, eventLog, "tester");
@@ -290,7 +290,7 @@ describe("executeAction", () => {
       label: "Signal",
       context: {},
       target: {},
-      run: ["array", ["array", "emit", ["str", "thing-happened"]]],
+      run: ["array", ["array", "emit", ["__lit", "thing-happened"]]],
     };
 
     const result = executeAction(action, graph, packStore, a.id, b.id, eventLog, "tester");
@@ -332,7 +332,7 @@ describe("executeAction", () => {
       target: { kind: "item" },
       run: ["array",
         ["array", "addEdge", "context", "target", "carries"],
-        ["array", "setText", "target", ["str", "Carried Sword"]],
+        ["array", "setText", "target", ["__lit", "Carried Sword"]],
       ],
     };
 

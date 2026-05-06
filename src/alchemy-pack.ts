@@ -94,7 +94,7 @@ export const ALCHEMY_PACK: WorldPack = {
         ["array",
           ["array", "removeField", "context", "flammable"],
           ["array", "setField", "context", "wet", true],
-          ["array", "setText", "context", ["str", "Wet Wood"]],
+          ["array", "setText", "context", ["__lit", "Wet Wood"]],
         ],
         null,
       ],
