@@ -13,6 +13,7 @@ export type ActionEffect =
   | { type: "setText"; card: CardRef; text: string }
   | { type: "setField"; card: CardRef; key: string; value: unknown }
   | { type: "removeField"; card: CardRef; key: string }
+  | { type: "removeCard"; card: CardRef }
   | { type: "createCard"; text: string; kind?: string; fields?: Record<string, unknown>; near?: CardRef }
   | { type: "emit"; event: string; data?: Record<string, unknown> };
 

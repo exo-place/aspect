@@ -91,10 +91,7 @@ export const ALCHEMY_PACK: WorldPack = {
       do: [
         { type: "setKind", card: "context", kind: "steam" },
         { type: "setText", card: "context", text: "Steam" },
-        { type: "setKind", card: "target", kind: null },
-        { type: "setText", card: "target", text: "(consumed)" },
-        { type: "removeField", card: "target", key: "wet" },
-        { type: "removeField", card: "target", key: "cold" },
+        { type: "removeCard", card: "target" },
       ],
     },
     // Stone + Water → Mud (stone transformed, water consumed)
@@ -113,8 +110,7 @@ export const ALCHEMY_PACK: WorldPack = {
         { type: "setKind", card: "context", kind: "mud" },
         { type: "setText", card: "context", text: "Mud" },
         { type: "removeField", card: "context", key: "hard" },
-        { type: "setKind", card: "target", kind: null },
-        { type: "setText", card: "target", text: "(consumed)" },
+        { type: "removeCard", card: "target" },
       ],
     },
     // Stone + Fire → Obsidian (stone transformed, fire persists)
@@ -182,8 +178,7 @@ export const ALCHEMY_PACK: WorldPack = {
       do: [
         { type: "setKind", card: "context", kind: "mud" },
         { type: "setText", card: "context", text: "Mud" },
-        { type: "setKind", card: "target", kind: null },
-        { type: "setText", card: "target", text: "(consumed)" },
+        { type: "removeCard", card: "target" },
       ],
     },
     // Obsidian + Water → Stone (thermal shock)
@@ -202,8 +197,7 @@ export const ALCHEMY_PACK: WorldPack = {
         { type: "setKind", card: "context", kind: "stone" },
         { type: "setText", card: "context", text: "Stone" },
         { type: "removeField", card: "context", key: "sharp" },
-        { type: "setKind", card: "target", kind: null },
-        { type: "setText", card: "target", text: "(consumed)" },
+        { type: "removeCard", card: "target" },
       ],
     },
   ],

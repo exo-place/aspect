@@ -362,6 +362,11 @@ export function executeAction(
           graph.deleteField(cardId, effect.key);
           break;
         }
+        case "removeCard": {
+          const cardId = resolveCardId(effect.card);
+          graph.removeCard(cardId);
+          break;
+        }
         case "createCard": {
           const nearId = effect.near ? resolveCardId(effect.near) : contextId;
           const nearCard = graph.getCard(nearId);
