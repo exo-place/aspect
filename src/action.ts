@@ -357,6 +357,25 @@ export function executeAction(
           graph.setField(cardId, effect.key, effect.value);
           break;
         }
+        case "removeField": {
+          const cardId = resolveCardId(effect.card);
+          graph.deleteField(cardId, effect.key);
+          break;
+        }
+        case "createCard": {
+          const nearId = effect.near ? resolveCardId(effect.near) : contextId;
+          const nearCard = graph.getCard(nearId);
+          const pos = nearCard
+            ? { x: nearCard.position.x + 160, y: nearCard.position.y }
+            : { x: 0, y: 0 };
+          const newCard = graph.addCard(effect.text, pos, effect.kind);
+          if (effect.fields) {
+            for (const [k, v] of Object.entries(effect.fields)) {
+              graph.setField(newCard.id, k, v);
+            }
+          }
+          break;
+        }
         case "emit": {
           emittedEvents.push({
             timestamp: Date.now(),

@@ -2,10 +2,10 @@ import type { WorldPack } from "./pack-types";
 
 export const ALCHEMY_PACK: WorldPack = {
   packId: "elemental-alchemy",
-  packVersion: 1,
+  packVersion: 2,
   name: "Elemental Alchemy",
   description: "Combine materials based on their properties. Drag one onto another to combine.",
-  fieldNames: ["flammable", "wet", "hot", "hard", "sharp", "ash", "cold"],
+  fieldNames: ["flammable", "wet", "hot", "hard", "sharp", "cold"],
   kinds: [
     {
       id: "wood",
@@ -34,8 +34,8 @@ export const ALCHEMY_PACK: WorldPack = {
     {
       id: "ash",
       label: "Ash",
-      style: { color: "#666", icon: "🌫️" },
-      fields: { ash: true },
+      style: { color: "#777", icon: "🌫️" },
+      fields: {},
     },
     {
       id: "steam",
@@ -58,7 +58,7 @@ export const ALCHEMY_PACK: WorldPack = {
   ],
   edgeTypes: [],
   actions: [
-    // Wood + Fire → Ash (flammable + hot)
+    // Wood + Fire → Ash (wood consumed/transformed, fire persists)
     {
       id: "ignite",
       label: "Ignite",
@@ -73,47 +73,55 @@ export const ALCHEMY_PACK: WorldPack = {
       do: [
         { type: "setKind", card: "context", kind: "ash" },
         { type: "setText", card: "context", text: "Ash" },
+        { type: "removeField", card: "context", key: "flammable" },
       ],
     },
-    // Fire + Water → Steam (hot + wet)
+    // Fire + Water → Steam (fire becomes steam, water consumed)
     {
       id: "extinguish",
       label: "Extinguish",
       description: "Water extinguishes fire, producing steam",
-      context: { kind: "water" },
-      target: { kind: "fire" },
+      context: { kind: "fire" },
+      target: { kind: "water" },
       trigger: "combine",
       when: ["and",
-        ["get", "contextFields", "wet"],
-        ["get", "targetFields", "hot"],
+        ["get", "contextFields", "hot"],
+        ["get", "targetFields", "wet"],
       ],
       do: [
-        { type: "setKind", card: "target", kind: "steam" },
-        { type: "setText", card: "target", text: "Steam" },
+        { type: "setKind", card: "context", kind: "steam" },
+        { type: "setText", card: "context", text: "Steam" },
+        { type: "setKind", card: "target", kind: null },
+        { type: "setText", card: "target", text: "(consumed)" },
+        { type: "removeField", card: "target", key: "wet" },
+        { type: "removeField", card: "target", key: "cold" },
       ],
     },
-    // Stone + Water → Mud (hard + wet)
+    // Stone + Water → Mud (stone transformed, water consumed)
     {
       id: "erode",
       label: "Erode",
-      description: "Water erodes stone into mud",
-      context: { kind: "water" },
-      target: { kind: "stone" },
+      description: "Water erodes stone into mud over time",
+      context: { kind: "stone" },
+      target: { kind: "water" },
       trigger: "combine",
       when: ["and",
-        ["get", "contextFields", "wet"],
-        ["get", "targetFields", "hard"],
+        ["get", "contextFields", "hard"],
+        ["get", "targetFields", "wet"],
       ],
       do: [
-        { type: "setKind", card: "target", kind: "mud" },
-        { type: "setText", card: "target", text: "Mud" },
+        { type: "setKind", card: "context", kind: "mud" },
+        { type: "setText", card: "context", text: "Mud" },
+        { type: "removeField", card: "context", key: "hard" },
+        { type: "setKind", card: "target", kind: null },
+        { type: "setText", card: "target", text: "(consumed)" },
       ],
     },
-    // Stone + Fire → Obsidian (hard + hot)
+    // Stone + Fire → Obsidian (stone transformed, fire persists)
     {
       id: "forge",
       label: "Forge",
-      description: "Extreme heat transforms stone into obsidian",
+      description: "Intense heat transforms stone into obsidian",
       context: { kind: "stone" },
       target: { kind: "fire" },
       trigger: "combine",
@@ -130,7 +138,7 @@ export const ALCHEMY_PACK: WorldPack = {
     {
       id: "soak",
       label: "Soak",
-      description: "Water soaks wood, making it harder to burn",
+      description: "Water soaks wood, making it resistant to fire",
       context: { kind: "wood" },
       target: { kind: "water" },
       trigger: "combine",
@@ -139,9 +147,63 @@ export const ALCHEMY_PACK: WorldPack = {
         ["get", "targetFields", "wet"],
       ],
       do: [
-        { type: "setField", card: "context", key: "flammable", value: false },
+        { type: "removeField", card: "context", key: "flammable" },
         { type: "setField", card: "context", key: "wet", value: true },
         { type: "setText", card: "context", text: "Wet Wood" },
+      ],
+    },
+    // Mud + Fire → Stone (kiln firing)
+    {
+      id: "fire-mud",
+      label: "Fire",
+      description: "Heat dries mud into stone",
+      context: { kind: "mud" },
+      target: { kind: "fire" },
+      trigger: "combine",
+      when: ["and",
+        ["get", "targetFields", "hot"],
+        ["get", "contextFields", "wet"],
+      ],
+      do: [
+        { type: "setKind", card: "context", kind: "stone" },
+        { type: "setText", card: "context", text: "Stone" },
+        { type: "removeField", card: "context", key: "wet" },
+      ],
+    },
+    // Ash + Water → Mud
+    {
+      id: "ash-water",
+      label: "Mix",
+      description: "Ash absorbs water to form mud",
+      context: { kind: "ash" },
+      target: { kind: "water" },
+      trigger: "combine",
+      when: ["get", "targetFields", "wet"],
+      do: [
+        { type: "setKind", card: "context", kind: "mud" },
+        { type: "setText", card: "context", text: "Mud" },
+        { type: "setKind", card: "target", kind: null },
+        { type: "setText", card: "target", text: "(consumed)" },
+      ],
+    },
+    // Obsidian + Water → Stone (thermal shock)
+    {
+      id: "cool-obsidian",
+      label: "Cool",
+      description: "Cold water cracks obsidian back into stone",
+      context: { kind: "obsidian" },
+      target: { kind: "water" },
+      trigger: "combine",
+      when: ["and",
+        ["get", "contextFields", "hard"],
+        ["get", "targetFields", "cold"],
+      ],
+      do: [
+        { type: "setKind", card: "context", kind: "stone" },
+        { type: "setText", card: "context", text: "Stone" },
+        { type: "removeField", card: "context", key: "sharp" },
+        { type: "setKind", card: "target", kind: null },
+        { type: "setText", card: "target", text: "(consumed)" },
       ],
     },
   ],
