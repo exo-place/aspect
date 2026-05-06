@@ -46,6 +46,7 @@ function buildPredicateEnv(data: ActionData, packStore: WorldPackStore): Record<
   if (pack) {
     for (const kind of pack.kinds) env[kind.id] = kind.id;
     for (const et of pack.edgeTypes) env[et.id] = et.id;
+    for (const name of pack.fieldNames ?? []) env[name] = name;
   }
   return env;
 }

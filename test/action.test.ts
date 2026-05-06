@@ -218,6 +218,32 @@ describe("isActionAvailable", () => {
     };
     expect(isActionAvailable(actionFalse, graph, packStore, a.id, b.id)).toBe(false);
   });
+
+  test("evaluates field predicates via fieldNames env", () => {
+    const bundle = createYDoc();
+    const graph = new CardGraph(bundle);
+    const packStore = new WorldPackStore(bundle);
+    packStore.load({
+      ...PACK,
+      fieldNames: ["flammable"],
+    });
+    graph.setPackStore(packStore);
+
+    const a = graph.addCard("A", { x: 0, y: 0 });
+    graph.setField(a.id, "flammable", true);
+    const b = graph.addCard("B", { x: 100, y: 0 });
+
+    const action: ActionDef = {
+      id: "field-test",
+      label: "Test",
+      context: {},
+      target: {},
+      when: ["get", "contextFields", "flammable"],
+      do: [],
+    };
+    expect(isActionAvailable(action, graph, packStore, a.id, b.id)).toBe(true);
+    expect(isActionAvailable(action, graph, packStore, b.id, a.id)).toBe(false);
+  });
 });
 
 describe("executeAction", () => {

@@ -35,7 +35,15 @@ export class CardGraph {
       yCard.set("text", text);
       yCard.set("x", position.x);
       yCard.set("y", position.y);
-      if (kind !== undefined) yCard.set("kind", kind);
+      if (kind !== undefined) {
+        yCard.set("kind", kind);
+        const kindFields = this.packStore?.getKind(kind)?.fields;
+        if (kindFields && Object.keys(kindFields).length > 0) {
+          const yFields = new Y.Map<unknown>();
+          for (const [k, v] of Object.entries(kindFields)) yFields.set(k, v);
+          yCard.set("fields", yFields);
+        }
+      }
       this.cards.set(id, yCard);
     });
     return this.materializeCard(id, this.cards.get(id)!);
@@ -102,6 +110,17 @@ export class CardGraph {
         yCard.delete("kind");
       } else {
         yCard.set("kind", kind);
+        const kindFields = this.packStore?.getKind(kind)?.fields;
+        if (kindFields) {
+          let yFields = yCard.get("fields") as Y.Map<unknown> | undefined;
+          if (!yFields) {
+            yFields = new Y.Map<unknown>();
+            yCard.set("fields", yFields);
+          }
+          for (const [k, v] of Object.entries(kindFields)) {
+            if (!yFields.has(k)) yFields.set(k, v);
+          }
+        }
       }
     });
   }

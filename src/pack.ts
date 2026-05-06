@@ -18,6 +18,7 @@ function parseActionFromYMap(yAction: Y.Map<unknown>): ActionDef | null {
       ...(yAction.get("description") !== undefined ? { description: yAction.get("description") as string } : {}),
       context: JSON.parse(yAction.get("context") as string),
       target: JSON.parse(yAction.get("target") as string),
+      ...(yAction.get("trigger") !== undefined ? { trigger: yAction.get("trigger") as "affordance" | "combine" | "both" } : {}),
       ...(yAction.get("when") !== undefined ? { when: JSON.parse(yAction.get("when") as string) } : {}),
       do: JSON.parse(yAction.get("do") as string),
     };
@@ -60,10 +61,12 @@ export class WorldPackStore {
         const icon = yKind.get("icon") as string | undefined;
         if (color !== undefined) style.color = color;
         if (icon !== undefined) style.icon = icon;
+        const yFields = yKind.get("fields") as string | undefined;
         kinds.push({
           id: yKind.get("id") as string,
           label: yKind.get("label") as string,
           ...(Object.keys(style).length > 0 ? { style } : {}),
+          ...(yFields !== undefined ? { fields: JSON.parse(yFields) as Record<string, unknown> } : {}),
         });
       }
     }
@@ -96,6 +99,9 @@ export class WorldPackStore {
     };
     const description = this.packMap.get("description") as string | undefined;
     if (description !== undefined) pack.description = description;
+
+    const yFieldNames = this.packMap.get("fieldNames") as string[] | undefined;
+    if (yFieldNames && yFieldNames.length > 0) pack.fieldNames = yFieldNames;
 
     const yActions = this.packMap.get("actions") as Y.Array<Y.Map<unknown>> | undefined;
     if (yActions && yActions.length > 0) {
@@ -134,6 +140,7 @@ export class WorldPackStore {
         yKind.set("label", kind.label);
         if (kind.style?.color !== undefined) yKind.set("color", kind.style.color);
         if (kind.style?.icon !== undefined) yKind.set("icon", kind.style.icon);
+        if (kind.fields !== undefined) yKind.set("fields", JSON.stringify(kind.fields));
         yKinds.push([yKind]);
       }
       this.packMap.set("kinds", yKinds);
@@ -149,6 +156,10 @@ export class WorldPackStore {
       }
       this.packMap.set("edgeTypes", yEdgeTypes);
 
+      if (pack.fieldNames && pack.fieldNames.length > 0) {
+        this.packMap.set("fieldNames", pack.fieldNames);
+      }
+
       if (pack.actions && pack.actions.length > 0) {
         const yActions = new Y.Array<Y.Map<unknown>>();
         for (const action of pack.actions) {
@@ -158,6 +169,7 @@ export class WorldPackStore {
           if (action.description !== undefined) yAction.set("description", action.description);
           yAction.set("context", JSON.stringify(action.context));
           yAction.set("target", JSON.stringify(action.target));
+          if (action.trigger !== undefined) yAction.set("trigger", action.trigger);
           if (action.when !== undefined) yAction.set("when", JSON.stringify(action.when));
           yAction.set("do", JSON.stringify(action.do));
           yActions.push([yAction]);
@@ -183,10 +195,12 @@ export class WorldPackStore {
         const icon = yKind.get("icon") as string | undefined;
         if (color !== undefined) style.color = color;
         if (icon !== undefined) style.icon = icon;
+        const yKindFields = yKind.get("fields") as string | undefined;
         return {
           id: yKind.get("id") as string,
           label: yKind.get("label") as string,
           ...(Object.keys(style).length > 0 ? { style } : {}),
+          ...(yKindFields !== undefined ? { fields: JSON.parse(yKindFields) as Record<string, unknown> } : {}),
         };
       }
     }

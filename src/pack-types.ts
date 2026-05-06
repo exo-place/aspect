@@ -7,6 +7,7 @@ export interface KindDef {
   id: string;
   label: string;
   style?: KindStyle;
+  fields?: Record<string, unknown>;
 }
 
 export interface EdgeTypeConstraint {
@@ -28,4 +29,5 @@ export interface WorldPack {
   kinds: KindDef[];
   edgeTypes: EdgeTypeDef[];
   actions?: import("./action-types").ActionDef[];
+  fieldNames?: string[];
 }
