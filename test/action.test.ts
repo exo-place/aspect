@@ -159,7 +159,7 @@ describe("isActionAvailable", () => {
       context: {},
       target: {},
       run: ["if", ["==", ["get", "context", "kind"], "room"],
-        ["array", ["array", "emit", "ok"]],
+        ["array", ["call", "emit", "ok"]],
         null,
       ],
     };
@@ -171,7 +171,7 @@ describe("isActionAvailable", () => {
       context: {},
       target: {},
       run: ["if", ["==", ["get", "context", "kind"], "item"],
-        ["array", ["array", "emit", "ok"]],
+        ["array", ["call", "emit", "ok"]],
         null,
       ],
     };
@@ -195,7 +195,7 @@ describe("isActionAvailable", () => {
       context: {},
       target: {},
       run: ["if", ["get", "contextFields", "flammable"],
-        ["array", ["array", "emit", "ok"]],
+        ["array", ["call", "emit", "ok"]],
         null,
       ],
     };
@@ -215,7 +215,7 @@ describe("executeAction", () => {
       label: "Grab",
       context: { kind: "character" },
       target: { kind: "item" },
-      run: ["array", ["array", "addEdge", "context", "target", "carries"]],
+      run: ["array", ["call", "addEdge", "context", "target", "carries"]],
     };
 
     const result = executeAction(action, graph, packStore, char.id, item.id, eventLog, "tester");
@@ -237,7 +237,7 @@ describe("executeAction", () => {
       label: "Remove",
       context: { kind: "room" },
       target: { kind: "item", edgeType: "contains" },
-      run: ["array", ["array", "removeEdge", "context", "target", "contains"]],
+      run: ["array", ["call", "removeEdge", "context", "target", "contains"]],
     };
 
     const result = executeAction(action, graph, packStore, room.id, item.id, eventLog, "tester");
@@ -255,7 +255,7 @@ describe("executeAction", () => {
       label: "Transform",
       context: {},
       target: {},
-      run: ["array", ["array", "setKind", "context", "room"]],
+      run: ["array", ["call", "setKind", "context", "room"]],
     };
 
     executeAction(action, graph, packStore, card.id, other.id, eventLog, "tester");
@@ -273,7 +273,7 @@ describe("executeAction", () => {
       label: "Rename",
       context: {},
       target: {},
-      run: ["array", ["array", "setText", "context", ["__lit", "New text"]]],
+      run: ["array", ["call", "setText", "context", ["__lit", "New text"]]],
     };
 
     executeAction(action, graph, packStore, card.id, other.id, eventLog, "tester");
@@ -290,7 +290,7 @@ describe("executeAction", () => {
       label: "Signal",
       context: {},
       target: {},
-      run: ["array", ["array", "emit", ["__lit", "thing-happened"]]],
+      run: ["array", ["call", "emit", ["__lit", "thing-happened"]]],
     };
 
     const result = executeAction(action, graph, packStore, a.id, b.id, eventLog, "tester");
@@ -312,7 +312,7 @@ describe("executeAction", () => {
       label: "Test",
       context: { kind: "character" },
       target: {},
-      run: ["array", ["array", "setText", "context", "changed"]],
+      run: ["array", ["call", "setText", "context", "changed"]],
     };
 
     const result = executeAction(action, graph, packStore, room.id, item.id, eventLog, "tester");
@@ -331,8 +331,8 @@ describe("executeAction", () => {
       context: { kind: "character" },
       target: { kind: "item" },
       run: ["array",
-        ["array", "addEdge", "context", "target", "carries"],
-        ["array", "setText", "target", ["__lit", "Carried Sword"]],
+        ["call", "addEdge", "context", "target", "carries"],
+        ["call", "setText", "target", ["__lit", "Carried Sword"]],
       ],
     };
 
@@ -357,7 +357,7 @@ describe("executeAction", () => {
       label: "Grab",
       context: { kind: "character" },
       target: { kind: "item" },
-      run: ["array", ["array", "addEdge", "context", "target", "carries"]],
+      run: ["array", ["call", "addEdge", "context", "target", "carries"]],
     };
 
     executeAction(action, graph, packStore, char.id, item.id, eventLog, "tester");
@@ -376,7 +376,7 @@ describe("executeAction", () => {
       label: "Test",
       context: {},
       target: {},
-      run: ["array", ["array", "emit", "test-event"]],
+      run: ["array", ["call", "emit", "test-event"]],
     };
 
     const result = executeAction(action, graph, packStore, a.id, b.id, null, "tester");
@@ -398,7 +398,7 @@ describe("findActionTargets", () => {
       label: "Test",
       context: { kind: "character" },
       target: { kind: "item" },
-      run: ["array", ["array", "emit", "ok"]],
+      run: ["array", ["call", "emit", "ok"]],
     };
 
     const targets = findActionTargets(action, graph, packStore, char.id);
@@ -418,7 +418,7 @@ describe("findActionTargets", () => {
       label: "Test",
       context: {},
       target: {},
-      run: ["array", ["array", "emit", "ok"]],
+      run: ["array", ["call", "emit", "ok"]],
     };
 
     const targets = findActionTargets(action, graph, packStore, a.id);

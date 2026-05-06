@@ -82,11 +82,16 @@ function buildRunEnv(
   }
 
   const env: Record<string, unknown> = {
-    // Effect type name strings (self-referential for use as effect tags)
-    setKind: "setKind", setText: "setText", setField: "setField",
-    removeField: "removeField", removeCard: "removeCard",
-    addEdge: "addEdge", removeEdge: "removeEdge",
-    createCard: "createCard", emit: "emit",
+    // Effect builders — each returns an effect tuple
+    setKind: (card: unknown, kind: unknown) => ["setKind", card, kind],
+    setText: (card: unknown, text: unknown) => ["setText", card, text],
+    setField: (card: unknown, key: unknown, value: unknown) => ["setField", card, key, value],
+    removeField: (card: unknown, key: unknown) => ["removeField", card, key],
+    removeCard: (card: unknown) => ["removeCard", card],
+    addEdge: (from: unknown, to: unknown, edgeType?: unknown, label?: unknown) => ["addEdge", from, to, edgeType, label],
+    removeEdge: (from: unknown, to: unknown, edgeType?: unknown) => ["removeEdge", from, to, edgeType],
+    createCard: (text: unknown, kind?: unknown, fields?: unknown, near?: unknown) => ["createCard", text, kind, fields, near],
+    emit: (event: unknown, data?: unknown) => ["emit", event, data],
     // Common field/property name strings
     id: "id", kind: "kind", text: "text", fields: "fields",
     from: "from", to: "to", type: "type", label: "label",

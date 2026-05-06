@@ -392,7 +392,7 @@ describe("validateWorldPack", () => {
             label: "Test",
             context: { kind: "room" },
             target: { kind: "item", edgeType: "exit" },
-            run: ["array", ["array", "addEdge", "context", "target", "exit"]],
+            run: ["array", ["call", "addEdge", "context", "target", "exit"]],
           },
         ],
       });
@@ -529,7 +529,7 @@ describe("validateWorldPack", () => {
       const result = validateWorldPack({
         ...VALID_PACK,
         actions: [{ id: "test", label: "Test", context: {}, target: {},
-          run: ["array", ["array", "emit", "tested"]],
+          run: ["array", ["call", "emit", "tested"]],
         }],
       });
       expect(result.valid).toBe(true);

@@ -298,14 +298,14 @@ describe("WorldPackStore", () => {
           description: "Pick something up",
           context: { kind: "room" },
           target: { kind: "item", edgeType: "contains", direction: "from" },
-          run: ["array", ["array", "addEdge", "context", "target", "contains"], ["array", "emit", "grabbed"]],
+          run: ["array", ["call", "addEdge", "context", "target", "contains"], ["call", "emit", "grabbed"]],
         },
         {
           id: "drop",
           label: "Drop",
           context: {},
           target: {},
-          run: ["array", ["array", "removeEdge", "context", "target"]],
+          run: ["array", ["call", "removeEdge", "context", "target"]],
         },
       ],
     };
