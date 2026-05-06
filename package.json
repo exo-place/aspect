@@ -18,7 +18,6 @@
   },
   "dependencies": {
     "@dusklight/marinada": "github:rhi-zone/marinada",
-    "@rhi-zone/rainbow": "file:/home/me/git/rhizone/rainbow/packages/core",
     "keybinds": "github:pterror/keybinds",
     "y-indexeddb": "^9.0.12",
     "y-websocket": "^3.0.0",
