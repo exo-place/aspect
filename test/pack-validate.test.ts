@@ -392,10 +392,7 @@ describe("validateWorldPack", () => {
             label: "Test",
             context: { kind: "room" },
             target: { kind: "item", edgeType: "exit" },
-            do: [
-              { type: "addEdge", from: "context", to: "target", edgeType: "exit" },
-              { type: "emit", event: "tested" },
-            ],
+            run: ["array", ["array", "addEdge", "context", "target", "exit"]],
           },
         ],
       });
@@ -418,7 +415,7 @@ describe("validateWorldPack", () => {
     test("rejects action with missing id", () => {
       const result = validateWorldPack({
         ...VALID_PACK,
-        actions: [{ label: "Test", context: {}, target: {}, do: [] }],
+        actions: [{ label: "Test", context: {}, target: {}, run: null }],
       });
       expect(result.valid).toBe(false);
       if (!result.valid) {
@@ -429,7 +426,7 @@ describe("validateWorldPack", () => {
     test("rejects action with missing label", () => {
       const result = validateWorldPack({
         ...VALID_PACK,
-        actions: [{ id: "test", context: {}, target: {}, do: [] }],
+        actions: [{ id: "test", context: {}, target: {}, run: null }],
       });
       expect(result.valid).toBe(false);
       if (!result.valid) {
@@ -440,7 +437,7 @@ describe("validateWorldPack", () => {
     test("rejects action with missing context", () => {
       const result = validateWorldPack({
         ...VALID_PACK,
-        actions: [{ id: "test", label: "Test", target: {}, do: [] }],
+        actions: [{ id: "test", label: "Test", target: {}, run: null }],
       });
       expect(result.valid).toBe(false);
       if (!result.valid) {
@@ -451,7 +448,7 @@ describe("validateWorldPack", () => {
     test("rejects action with missing target", () => {
       const result = validateWorldPack({
         ...VALID_PACK,
-        actions: [{ id: "test", label: "Test", context: {}, do: [] }],
+        actions: [{ id: "test", label: "Test", context: {}, run: null }],
       });
       expect(result.valid).toBe(false);
       if (!result.valid) {
@@ -459,21 +456,21 @@ describe("validateWorldPack", () => {
       }
     });
 
-    test("rejects action with missing do", () => {
+    test("rejects action with missing run", () => {
       const result = validateWorldPack({
         ...VALID_PACK,
         actions: [{ id: "test", label: "Test", context: {}, target: {} }],
       });
       expect(result.valid).toBe(false);
       if (!result.valid) {
-        expect(result.errors.some((e) => e.path === "actions[0].do")).toBe(true);
+        expect(result.errors.some((e) => e.path === "actions[0].run")).toBe(true);
       }
     });
 
     test("rejects context.kind referencing unknown kind", () => {
       const result = validateWorldPack({
         ...VALID_PACK,
-        actions: [{ id: "test", label: "Test", context: { kind: "alien" }, target: {}, do: [] }],
+        actions: [{ id: "test", label: "Test", context: { kind: "alien" }, target: {}, run: null }],
       });
       expect(result.valid).toBe(false);
       if (!result.valid) {
@@ -484,7 +481,7 @@ describe("validateWorldPack", () => {
     test("rejects target.kind referencing unknown kind", () => {
       const result = validateWorldPack({
         ...VALID_PACK,
-        actions: [{ id: "test", label: "Test", context: {}, target: { kind: "alien" }, do: [] }],
+        actions: [{ id: "test", label: "Test", context: {}, target: { kind: "alien" }, run: null }],
       });
       expect(result.valid).toBe(false);
       if (!result.valid) {
@@ -495,7 +492,7 @@ describe("validateWorldPack", () => {
     test("rejects target.edgeType referencing unknown edge type", () => {
       const result = validateWorldPack({
         ...VALID_PACK,
-        actions: [{ id: "test", label: "Test", context: {}, target: { edgeType: "warp" }, do: [] }],
+        actions: [{ id: "test", label: "Test", context: {}, target: { edgeType: "warp" }, run: null }],
       });
       expect(result.valid).toBe(false);
       if (!result.valid) {
@@ -506,7 +503,7 @@ describe("validateWorldPack", () => {
     test("rejects invalid target.direction", () => {
       const result = validateWorldPack({
         ...VALID_PACK,
-        actions: [{ id: "test", label: "Test", context: {}, target: { direction: "sideways" }, do: [] }],
+        actions: [{ id: "test", label: "Test", context: {}, target: { direction: "sideways" }, run: null }],
       });
       expect(result.valid).toBe(false);
       if (!result.valid) {
@@ -518,8 +515,8 @@ describe("validateWorldPack", () => {
       const result = validateWorldPack({
         ...VALID_PACK,
         actions: [
-          { id: "dup", label: "A", context: {}, target: {}, do: [] },
-          { id: "dup", label: "B", context: {}, target: {}, do: [] },
+          { id: "dup", label: "A", context: {}, target: {}, run: null },
+          { id: "dup", label: "B", context: {}, target: {}, run: null },
         ],
       });
       expect(result.valid).toBe(false);
@@ -528,64 +525,22 @@ describe("validateWorldPack", () => {
       }
     });
 
-    test("rejects unknown effect type", () => {
+    test("accepts action with run expression", () => {
       const result = validateWorldPack({
         ...VALID_PACK,
-        actions: [{ id: "test", label: "Test", context: {}, target: {}, do: [{ type: "explode" }] }],
-      });
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.errors.some((e) => e.path === "actions[0].do[0].type" && e.message.includes("explode"))).toBe(true);
-      }
-    });
-
-    test("rejects addEdge with invalid card refs", () => {
-      const result = validateWorldPack({
-        ...VALID_PACK,
-        actions: [{ id: "test", label: "Test", context: {}, target: {}, do: [
-          { type: "addEdge", from: "invalid", to: "context" },
-        ] }],
-      });
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.errors.some((e) => e.path === "actions[0].do[0].from")).toBe(true);
-      }
-    });
-
-    test("rejects setKind with unknown kind", () => {
-      const result = validateWorldPack({
-        ...VALID_PACK,
-        actions: [{ id: "test", label: "Test", context: {}, target: {}, do: [
-          { type: "setKind", card: "context", kind: "alien" },
-        ] }],
-      });
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.errors.some((e) => e.path === "actions[0].do[0].kind" && e.message.includes("alien"))).toBe(true);
-      }
-    });
-
-    test("accepts setKind with null kind", () => {
-      const result = validateWorldPack({
-        ...VALID_PACK,
-        actions: [{ id: "test", label: "Test", context: {}, target: {}, do: [
-          { type: "setKind", card: "context", kind: null },
-        ] }],
+        actions: [{ id: "test", label: "Test", context: {}, target: {},
+          run: ["array", ["array", "emit", "tested"]],
+        }],
       });
       expect(result.valid).toBe(true);
     });
 
-    test("rejects emit with empty event name", () => {
+    test("accepts action with null run (always unavailable)", () => {
       const result = validateWorldPack({
         ...VALID_PACK,
-        actions: [{ id: "test", label: "Test", context: {}, target: {}, do: [
-          { type: "emit", event: "" },
-        ] }],
+        actions: [{ id: "test", label: "Test", context: {}, target: {}, run: null }],
       });
-      expect(result.valid).toBe(false);
-      if (!result.valid) {
-        expect(result.errors.some((e) => e.path === "actions[0].do[0].event")).toBe(true);
-      }
+      expect(result.valid).toBe(true);
     });
   });
 

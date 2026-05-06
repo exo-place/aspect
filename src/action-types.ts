@@ -1,21 +1,8 @@
-export type CardRef = "context" | "target";
-
 export interface ActionTargetDef {
   kind?: string;
   edgeType?: string;
   direction?: "from" | "to";
 }
-
-export type ActionEffect =
-  | { type: "addEdge"; from: CardRef; to: CardRef; edgeType?: string; label?: string }
-  | { type: "removeEdge"; from: CardRef; to: CardRef; edgeType?: string }
-  | { type: "setKind"; card: CardRef; kind: string | null }
-  | { type: "setText"; card: CardRef; text: string }
-  | { type: "setField"; card: CardRef; key: string; value: unknown }
-  | { type: "removeField"; card: CardRef; key: string }
-  | { type: "removeCard"; card: CardRef }
-  | { type: "createCard"; text: string; kind?: string; fields?: Record<string, unknown>; near?: CardRef }
-  | { type: "emit"; event: string; data?: Record<string, unknown> };
 
 export interface ActionDef {
   id: string;
@@ -24,20 +11,7 @@ export interface ActionDef {
   context: { kind?: string };
   target: ActionTargetDef;
   trigger?: "affordance" | "combine" | "both";
-  when?: unknown;
-  do: ActionEffect[];
-}
-
-export interface ActionData {
-  context: { id: string; text: string; kind: string | null; fields: Record<string, unknown> };
-  target: { id: string; text: string; kind: string | null; fields: Record<string, unknown> };
-  edgesFromContextToTarget: Array<{ type?: string; label?: string }>;
-  edgesFromTargetToContext: Array<{ type?: string; label?: string }>;
-  contextEdgesFrom: Array<{ to: string; toKind?: string; type?: string }>;
-  contextEdgesTo: Array<{ from: string; fromKind?: string; type?: string }>;
-  targetEdgesFrom: Array<{ to: string; toKind?: string; type?: string }>;
-  targetEdgesTo: Array<{ from: string; fromKind?: string; type?: string }>;
-  sharedNeighbors: Array<{ id: string; kind?: string }>;
+  run: unknown;
 }
 
 export interface ActionResult {

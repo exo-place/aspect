@@ -298,20 +298,14 @@ describe("WorldPackStore", () => {
           description: "Pick something up",
           context: { kind: "room" },
           target: { kind: "item", edgeType: "contains", direction: "from" },
-          when: { "===": [{ var: "context.kind" }, "room"] },
-          do: [
-            { type: "addEdge", from: "context", to: "target", edgeType: "contains" },
-            { type: "emit", event: "grabbed" },
-          ],
+          run: ["array", ["array", "addEdge", "context", "target", "contains"], ["array", "emit", "grabbed"]],
         },
         {
           id: "drop",
           label: "Drop",
           context: {},
           target: {},
-          do: [
-            { type: "removeEdge", from: "context", to: "target" },
-          ],
+          run: ["array", ["array", "removeEdge", "context", "target"]],
         },
       ],
     };
@@ -327,8 +321,8 @@ describe("WorldPackStore", () => {
       expect(pack.actions![0].context.kind).toBe("room");
       expect(pack.actions![0].target.edgeType).toBe("contains");
       expect(pack.actions![0].target.direction).toBe("from");
-      expect(pack.actions![0].when).toEqual({ "===": [{ var: "context.kind" }, "room"] });
-      expect(pack.actions![0].do).toHaveLength(2);
+      expect(pack.actions![0].run).toBeDefined();
+      expect(Array.isArray(pack.actions![0].run)).toBe(true);
       expect(pack.actions![1].id).toBe("drop");
     });
 
@@ -384,8 +378,7 @@ describe("WorldPackStore", () => {
       store2.load(parsed);
       const result = store2.get()!;
       expect(result.actions).toHaveLength(2);
-      expect(result.actions![0].when).toEqual(PACK_WITH_ACTIONS.actions![0].when);
-      expect(result.actions![0].do).toEqual(PACK_WITH_ACTIONS.actions![0].do);
+      expect(result.actions![0].run).toEqual(PACK_WITH_ACTIONS.actions![0].run);
     });
   });
 

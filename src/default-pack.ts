@@ -2,7 +2,7 @@ import type { WorldPack } from "./pack-types";
 
 export const DEFAULT_PACK: WorldPack = {
   packId: "rooms-and-items",
-  packVersion: 1,
+  packVersion: 2,
   name: "Rooms & Items",
   kinds: [
     { id: "room", label: "Room", style: { color: "#56b6c2", icon: "\u{1F3E0}" } },
@@ -22,13 +22,16 @@ export const DEFAULT_PACK: WorldPack = {
       context: { kind: "character" },
       target: { kind: "item" },
       trigger: "both",
-      when: ["and",
-        ["call", "any", "sharedNeighbors", ["fn", ["n"], ["==", ["get", "n", "kind"], "room"]]],
-        ["not", ["call", "any", "edgesFromContextToTarget", ["fn", ["e"], ["==", ["get", "e", "type"], "carries"]]]],
-      ],
-      do: [
-        { type: "addEdge", from: "context", to: "target", edgeType: "carries" },
-        { type: "emit", event: "picked-up" },
+      run: ["if",
+        ["and",
+          ["call", "any", "sharedNeighbors", ["fn", ["n"], ["==", ["get", "n", "kind"], "room"]]],
+          ["not", ["call", "any", "edgesFromContextToTarget", ["fn", ["e"], ["==", ["get", "e", "type"], "carries"]]]],
+        ],
+        ["array",
+          ["array", "addEdge", "context", "target", "carries"],
+          ["array", "emit", "picked-up"],
+        ],
+        null,
       ],
     },
     {
@@ -37,9 +40,9 @@ export const DEFAULT_PACK: WorldPack = {
       description: "Character drops a carried item into the current room",
       context: { kind: "character" },
       target: { kind: "item", edgeType: "carries" },
-      do: [
-        { type: "removeEdge", from: "context", to: "target", edgeType: "carries" },
-        { type: "emit", event: "dropped" },
+      run: ["array",
+        ["array", "removeEdge", "context", "target", "carries"],
+        ["array", "emit", "dropped"],
       ],
     },
   ],

@@ -19,8 +19,7 @@ function parseActionFromYMap(yAction: Y.Map<unknown>): ActionDef | null {
       context: JSON.parse(yAction.get("context") as string),
       target: JSON.parse(yAction.get("target") as string),
       ...(yAction.get("trigger") !== undefined ? { trigger: yAction.get("trigger") as "affordance" | "combine" | "both" } : {}),
-      ...(yAction.get("when") !== undefined ? { when: JSON.parse(yAction.get("when") as string) } : {}),
-      do: JSON.parse(yAction.get("do") as string),
+      run: JSON.parse(yAction.get("run") as string),
     };
   } catch {
     console.warn(`Skipping action "${id}": corrupt JSON in CRDT data`);
@@ -170,8 +169,7 @@ export class WorldPackStore {
           yAction.set("context", JSON.stringify(action.context));
           yAction.set("target", JSON.stringify(action.target));
           if (action.trigger !== undefined) yAction.set("trigger", action.trigger);
-          if (action.when !== undefined) yAction.set("when", JSON.stringify(action.when));
-          yAction.set("do", JSON.stringify(action.do));
+          yAction.set("run", JSON.stringify(action.run));
           yActions.push([yAction]);
         }
         this.packMap.set("actions", yActions);

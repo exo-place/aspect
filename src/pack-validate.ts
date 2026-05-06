@@ -204,11 +204,9 @@ export function validateWorldPack(input: unknown): PackValidationResult {
           }
         }
 
-        // do (effects)
-        if (!Array.isArray(action.do)) {
-          errors.push({ path: `${prefix}.do`, message: "Must be an array" });
-        } else {
-          validateEffects(action.do as unknown[], prefix, kindIds, edgeTypeIds, errors);
+        // run (Marinada expression)
+        if (action.run === undefined) {
+          errors.push({ path: `${prefix}.run`, message: "Must be present" });
         }
 
         // uniqueness
@@ -229,80 +227,3 @@ export function validateWorldPack(input: unknown): PackValidationResult {
   return { valid: true, pack: input as WorldPack };
 }
 
-function validateEffects(
-  effects: unknown[],
-  actionPrefix: string,
-  kindIds: Set<string>,
-  edgeTypeIds: Set<string>,
-  errors: PackValidationError[],
-): void {
-  for (let j = 0; j < effects.length; j++) {
-    const ePrefix = `${actionPrefix}.do[${j}]`;
-    const eff = effects[j];
-    if (typeof eff !== "object" || eff === null || Array.isArray(eff)) {
-      errors.push({ path: ePrefix, message: "Must be an object" });
-      continue;
-    }
-    const effect = eff as Record<string, unknown>;
-    const type = effect.type;
-    if (typeof type !== "string") {
-      errors.push({ path: `${ePrefix}.type`, message: "Must be a string" });
-      continue;
-    }
-    switch (type) {
-      case "addEdge":
-      case "removeEdge":
-        if (!isCardRef(effect.from)) {
-          errors.push({ path: `${ePrefix}.from`, message: 'Must be "context" or "target"' });
-        }
-        if (!isCardRef(effect.to)) {
-          errors.push({ path: `${ePrefix}.to`, message: 'Must be "context" or "target"' });
-        }
-        if (effect.edgeType !== undefined) {
-          if (typeof effect.edgeType !== "string") {
-            errors.push({ path: `${ePrefix}.edgeType`, message: "Must be a string if provided" });
-          } else if (!edgeTypeIds.has(effect.edgeType)) {
-            errors.push({ path: `${ePrefix}.edgeType`, message: `References unknown edge type "${effect.edgeType}"` });
-          }
-        }
-        if (type === "addEdge" && effect.label !== undefined && typeof effect.label !== "string") {
-          errors.push({ path: `${ePrefix}.label`, message: "Must be a string if provided" });
-        }
-        break;
-      case "setKind":
-        if (!isCardRef(effect.card)) {
-          errors.push({ path: `${ePrefix}.card`, message: 'Must be "context" or "target"' });
-        }
-        if (effect.kind !== null && typeof effect.kind !== "string") {
-          errors.push({ path: `${ePrefix}.kind`, message: "Must be a string or null" });
-        } else if (typeof effect.kind === "string" && !kindIds.has(effect.kind)) {
-          errors.push({ path: `${ePrefix}.kind`, message: `References unknown kind "${effect.kind}"` });
-        }
-        break;
-      case "setText":
-        if (!isCardRef(effect.card)) {
-          errors.push({ path: `${ePrefix}.card`, message: 'Must be "context" or "target"' });
-        }
-        if (typeof effect.text !== "string") {
-          errors.push({ path: `${ePrefix}.text`, message: "Must be a string" });
-        }
-        break;
-      case "emit":
-        if (typeof effect.event !== "string" || effect.event === "") {
-          errors.push({ path: `${ePrefix}.event`, message: "Must be a non-empty string" });
-        }
-        if (effect.data !== undefined) {
-          if (typeof effect.data !== "object" || effect.data === null || Array.isArray(effect.data)) {
-            errors.push({ path: `${ePrefix}.data`, message: "Must be an object if provided" });
-          }
-        }
-        break;
-      default:
-        errors.push({ path: `${ePrefix}.type`, message: `Unknown effect type "${type}"` });
-    }
-  }
-}
-
-function isCardRef(val: unknown): val is "context" | "target" {
-  return val === "context" || val === "target";
-}

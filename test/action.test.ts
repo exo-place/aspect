@@ -4,7 +4,7 @@ import { WorldPackStore } from "../src/pack";
 import { EventLog } from "../src/event-log";
 import { History } from "../src/history";
 import { createYDoc } from "../src/ydoc";
-import { buildActionData, isActionAvailable, executeAction, findActionTargets } from "../src/action";
+import { isActionAvailable, executeAction, findActionTargets } from "../src/action";
 import type { ActionDef } from "../src/action-types";
 import type { WorldPack } from "../src/pack-types";
 
@@ -35,55 +35,13 @@ function makeWorld() {
   return { bundle, graph, packStore, eventLog, history };
 }
 
-describe("buildActionData", () => {
-  test("builds data for two connected cards", () => {
-    const { graph } = makeWorld();
-    const room = graph.addCard("Hall", { x: 0, y: 0 }, "room");
-    const item = graph.addCard("Sword", { x: 100, y: 0 }, "item");
-    graph.addEdge(room.id, item.id, "contains", "contains");
-
-    const data = buildActionData(graph, room.id, item.id);
-    expect(data).not.toBeNull();
-    expect(data!.context.id).toBe(room.id);
-    expect(data!.context.kind).toBe("room");
-    expect(data!.target.id).toBe(item.id);
-    expect(data!.target.kind).toBe("item");
-    expect(data!.edgesFromContextToTarget).toHaveLength(1);
-    expect(data!.edgesFromContextToTarget[0].type).toBe("contains");
-  });
-
-  test("returns null for missing card", () => {
-    const { graph } = makeWorld();
-    const room = graph.addCard("Hall", { x: 0, y: 0 }, "room");
-    expect(buildActionData(graph, room.id, "nonexistent")).toBeNull();
-  });
-
-  test("populates sharedNeighbors", () => {
-    const { graph } = makeWorld();
-    const room = graph.addCard("Hall", { x: 0, y: 0 }, "room");
-    const char = graph.addCard("Hero", { x: 100, y: 0 }, "character");
-    const item = graph.addCard("Sword", { x: 200, y: 0 }, "item");
-    graph.addEdge(room.id, char.id, undefined, "contains");
-    graph.addEdge(room.id, item.id, undefined, "contains");
-
-    const data = buildActionData(graph, char.id, item.id);
-    expect(data!.sharedNeighbors).toHaveLength(1);
-    expect(data!.sharedNeighbors[0].id).toBe(room.id);
-    expect(data!.sharedNeighbors[0].kind).toBe("room");
-  });
-
-  test("kind is null for untyped cards", () => {
-    const { graph } = makeWorld();
-    const a = graph.addCard("A", { x: 0, y: 0 });
-    const b = graph.addCard("B", { x: 100, y: 0 });
-    const data = buildActionData(graph, a.id, b.id);
-    expect(data!.context.kind).toBeNull();
-    expect(data!.target.kind).toBeNull();
-  });
-});
+// Simple helper: an action whose run always returns the given effects
+function always(...effects: unknown[]): unknown {
+  return ["array", ...effects.map(e => ["array", ...e as unknown[]])];
+}
 
 describe("isActionAvailable", () => {
-  test("returns true when all conditions met", () => {
+  test("returns true when kinds match and run returns effects", () => {
     const { graph, packStore } = makeWorld();
     const char = graph.addCard("Hero", { x: 0, y: 0 }, "character");
     const item = graph.addCard("Sword", { x: 100, y: 0 }, "item");
@@ -93,7 +51,7 @@ describe("isActionAvailable", () => {
       label: "Test",
       context: { kind: "character" },
       target: { kind: "item" },
-      do: [],
+      run: always(["emit", "ok"]),
     };
     expect(isActionAvailable(action, graph, packStore, char.id, item.id)).toBe(true);
   });
@@ -108,7 +66,7 @@ describe("isActionAvailable", () => {
       label: "Test",
       context: { kind: "character" },
       target: {},
-      do: [],
+      run: always(["emit", "ok"]),
     };
     expect(isActionAvailable(action, graph, packStore, room.id, item.id)).toBe(false);
   });
@@ -123,24 +81,9 @@ describe("isActionAvailable", () => {
       label: "Test",
       context: { kind: "character" },
       target: { kind: "item" },
-      do: [],
+      run: always(["emit", "ok"]),
     };
     expect(isActionAvailable(action, graph, packStore, char.id, room.id)).toBe(false);
-  });
-
-  test("returns true when kinds match and no further constraints", () => {
-    const { graph, packStore } = makeWorld();
-    const char = graph.addCard("Hero", { x: 0, y: 0 }, "character");
-    const item = graph.addCard("Sword", { x: 100, y: 0 }, "item");
-
-    const action: ActionDef = {
-      id: "test",
-      label: "Test",
-      context: { kind: "character" },
-      target: { kind: "item" },
-      do: [],
-    };
-    expect(isActionAvailable(action, graph, packStore, char.id, item.id)).toBe(true);
   });
 
   test("checks edge type with default direction (from)", () => {
@@ -154,23 +97,22 @@ describe("isActionAvailable", () => {
       label: "Test",
       context: { kind: "room" },
       target: { kind: "item", edgeType: "contains" },
-      do: [],
+      run: always(["emit", "ok"]),
     };
     expect(isActionAvailable(action, graph, packStore, room.id, item.id)).toBe(true);
   });
 
-  test("returns false when edge type is missing", () => {
+  test("returns false when required edge is missing", () => {
     const { graph, packStore } = makeWorld();
     const room = graph.addCard("Hall", { x: 0, y: 0 }, "room");
     const item = graph.addCard("Sword", { x: 100, y: 0 }, "item");
-    // No edge between them
 
     const action: ActionDef = {
       id: "test",
       label: "Test",
       context: { kind: "room" },
       target: { kind: "item", edgeType: "contains" },
-      do: [],
+      run: always(["emit", "ok"]),
     };
     expect(isActionAvailable(action, graph, packStore, room.id, item.id)).toBe(false);
   });
@@ -181,19 +123,32 @@ describe("isActionAvailable", () => {
     const item = graph.addCard("Sword", { x: 100, y: 0 }, "item");
     graph.addEdge(room.id, item.id, undefined, "contains");
 
-    // direction "to" means edge goes target→context, i.e. item→room
-    // We only have room→item, so this should be false
     const action: ActionDef = {
       id: "test",
       label: "Test",
       context: {},
       target: { edgeType: "contains", direction: "to" },
-      do: [],
+      run: always(["emit", "ok"]),
     };
     expect(isActionAvailable(action, graph, packStore, item.id, room.id)).toBe(true);
   });
 
-  test("evaluates when predicate", () => {
+  test("run returning null means not available", () => {
+    const { graph, packStore } = makeWorld();
+    const a = graph.addCard("A", { x: 0, y: 0 }, "room");
+    const b = graph.addCard("B", { x: 100, y: 0 }, "room");
+
+    const action: ActionDef = {
+      id: "test",
+      label: "Test",
+      context: {},
+      target: {},
+      run: null,
+    };
+    expect(isActionAvailable(action, graph, packStore, a.id, b.id)).toBe(false);
+  });
+
+  test("run with conditional predicate", () => {
     const { graph, packStore } = makeWorld();
     const a = graph.addCard("A", { x: 0, y: 0 }, "room");
     const b = graph.addCard("B", { x: 100, y: 0 }, "room");
@@ -203,8 +158,10 @@ describe("isActionAvailable", () => {
       label: "Test",
       context: {},
       target: {},
-      when: ["==", ["get", "context", "kind"], "room"],
-      do: [],
+      run: ["if", ["==", ["get", "context", "kind"], "room"],
+        ["array", ["array", "emit", "ok"]],
+        null,
+      ],
     };
     expect(isActionAvailable(actionTrue, graph, packStore, a.id, b.id)).toBe(true);
 
@@ -213,20 +170,19 @@ describe("isActionAvailable", () => {
       label: "Test",
       context: {},
       target: {},
-      when: ["==", ["get", "context", "kind"], "item"],
-      do: [],
+      run: ["if", ["==", ["get", "context", "kind"], "item"],
+        ["array", ["array", "emit", "ok"]],
+        null,
+      ],
     };
     expect(isActionAvailable(actionFalse, graph, packStore, a.id, b.id)).toBe(false);
   });
 
-  test("evaluates field predicates via fieldNames env", () => {
+  test("field predicates via fieldNames env", () => {
     const bundle = createYDoc();
     const graph = new CardGraph(bundle);
     const packStore = new WorldPackStore(bundle);
-    packStore.load({
-      ...PACK,
-      fieldNames: ["flammable"],
-    });
+    packStore.load({ ...PACK, fieldNames: ["flammable"] });
     graph.setPackStore(packStore);
 
     const a = graph.addCard("A", { x: 0, y: 0 });
@@ -238,8 +194,10 @@ describe("isActionAvailable", () => {
       label: "Test",
       context: {},
       target: {},
-      when: ["get", "contextFields", "flammable"],
-      do: [],
+      run: ["if", ["get", "contextFields", "flammable"],
+        ["array", ["array", "emit", "ok"]],
+        null,
+      ],
     };
     expect(isActionAvailable(action, graph, packStore, a.id, b.id)).toBe(true);
     expect(isActionAvailable(action, graph, packStore, b.id, a.id)).toBe(false);
@@ -257,14 +215,11 @@ describe("executeAction", () => {
       label: "Grab",
       context: { kind: "character" },
       target: { kind: "item" },
-      do: [
-        { type: "addEdge", from: "context", to: "target", edgeType: "carries", label: "carries" },
-      ],
+      run: ["array", ["array", "addEdge", "context", "target", "carries"]],
     };
 
     const result = executeAction(action, graph, packStore, char.id, item.id, eventLog, "tester");
     expect(result.success).toBe(true);
-
     const edges = graph.edgesFrom(char.id);
     expect(edges).toHaveLength(1);
     expect(edges[0].to).toBe(item.id);
@@ -282,9 +237,7 @@ describe("executeAction", () => {
       label: "Remove",
       context: { kind: "room" },
       target: { kind: "item", edgeType: "contains" },
-      do: [
-        { type: "removeEdge", from: "context", to: "target", edgeType: "contains" },
-      ],
+      run: ["array", ["array", "removeEdge", "context", "target", "contains"]],
     };
 
     const result = executeAction(action, graph, packStore, room.id, item.id, eventLog, "tester");
@@ -292,7 +245,7 @@ describe("executeAction", () => {
     expect(graph.edgesFrom(room.id)).toHaveLength(0);
   });
 
-  test("setKind effect changes card kind", () => {
+  test("setKind effect changes card kind and auto-labels", () => {
     const { graph, packStore, eventLog } = makeWorld();
     const card = graph.addCard("Thing", { x: 0, y: 0 }, "item");
     const other = graph.addCard("Other", { x: 100, y: 0 }, "room");
@@ -302,13 +255,12 @@ describe("executeAction", () => {
       label: "Transform",
       context: {},
       target: {},
-      do: [
-        { type: "setKind", card: "context", kind: "room" },
-      ],
+      run: ["array", ["array", "setKind", "context", "room"]],
     };
 
     executeAction(action, graph, packStore, card.id, other.id, eventLog, "tester");
     expect(graph.getCard(card.id)!.kind).toBe("room");
+    expect(graph.getCard(card.id)!.text).toBe("Room"); // auto-labelled
   });
 
   test("setText effect changes card text", () => {
@@ -321,9 +273,7 @@ describe("executeAction", () => {
       label: "Rename",
       context: {},
       target: {},
-      do: [
-        { type: "setText", card: "context", text: "New text" },
-      ],
+      run: ["array", ["array", "setText", "context", "New text"]],
     };
 
     executeAction(action, graph, packStore, card.id, other.id, eventLog, "tester");
@@ -340,18 +290,13 @@ describe("executeAction", () => {
       label: "Signal",
       context: {},
       target: {},
-      do: [
-        { type: "emit", event: "thing-happened", data: { detail: "info" } },
-      ],
+      run: ["array", ["array", "emit", "thing-happened"]],
     };
 
     const result = executeAction(action, graph, packStore, a.id, b.id, eventLog, "tester");
     expect(result.success).toBe(true);
     expect(result.events).toHaveLength(1);
     expect(result.events[0].event).toBe("thing-happened");
-    expect(result.events[0].data).toEqual({ detail: "info" });
-
-    // Event should be in the log
     const all = eventLog.getAll();
     expect(all).toHaveLength(1);
     expect(all[0].event).toBe("thing-happened");
@@ -365,32 +310,29 @@ describe("executeAction", () => {
     const action: ActionDef = {
       id: "test",
       label: "Test",
-      context: { kind: "character" }, // room is not character
+      context: { kind: "character" },
       target: {},
-      do: [{ type: "setText", card: "context", text: "changed" }],
+      run: ["array", ["array", "setText", "context", "changed"]],
     };
 
     const result = executeAction(action, graph, packStore, room.id, item.id, eventLog, "tester");
     expect(result.success).toBe(false);
-    expect(graph.getCard(room.id)!.text).toBe("Hall"); // unchanged
+    expect(graph.getCard(room.id)!.text).toBe("Hall");
   });
 
-  test("multiple graph effects execute atomically", () => {
+  test("multiple effects execute atomically", () => {
     const { graph, packStore } = makeWorld();
     const char = graph.addCard("Hero", { x: 0, y: 0 }, "character");
     const item = graph.addCard("Sword", { x: 100, y: 0 }, "item");
-    const room = graph.addCard("Hall", { x: 200, y: 0 }, "room");
-    graph.addEdge(room.id, item.id, undefined, "contains");
 
     const action: ActionDef = {
       id: "pick-up",
       label: "Pick Up",
       context: { kind: "character" },
       target: { kind: "item" },
-      do: [
-        { type: "removeEdge", from: "context", to: "target", edgeType: "contains" },
-        { type: "addEdge", from: "context", to: "target", edgeType: "carries" },
-        { type: "setText", card: "target", text: "Carried Sword" },
+      run: ["array",
+        ["array", "addEdge", "context", "target", "carries"],
+        ["array", "setText", "target", "Carried Sword"],
       ],
     };
 
@@ -399,7 +341,6 @@ describe("executeAction", () => {
 
     const result = executeAction(action, graph, packStore, char.id, item.id, null, "tester");
     expect(result.success).toBe(true);
-    // All graph changes in single Y.js transaction → single onChange
     expect(changeCount).toBe(1);
     expect(graph.getCard(item.id)!.text).toBe("Carried Sword");
     expect(graph.edgesFrom(char.id)).toHaveLength(1);
@@ -416,14 +357,11 @@ describe("executeAction", () => {
       label: "Grab",
       context: { kind: "character" },
       target: { kind: "item" },
-      do: [
-        { type: "addEdge", from: "context", to: "target", edgeType: "carries" },
-      ],
+      run: ["array", ["array", "addEdge", "context", "target", "carries"]],
     };
 
     executeAction(action, graph, packStore, char.id, item.id, eventLog, "tester");
     expect(graph.edgesFrom(char.id)).toHaveLength(1);
-
     history.undo();
     expect(graph.edgesFrom(char.id)).toHaveLength(0);
   });
@@ -438,9 +376,7 @@ describe("executeAction", () => {
       label: "Test",
       context: {},
       target: {},
-      do: [
-        { type: "emit", event: "test-event" },
-      ],
+      run: ["array", ["array", "emit", "test-event"]],
     };
 
     const result = executeAction(action, graph, packStore, a.id, b.id, null, "tester");
@@ -462,7 +398,7 @@ describe("findActionTargets", () => {
       label: "Test",
       context: { kind: "character" },
       target: { kind: "item" },
-      do: [],
+      run: ["array", ["array", "emit", "ok"]],
     };
 
     const targets = findActionTargets(action, graph, packStore, char.id);
@@ -482,7 +418,7 @@ describe("findActionTargets", () => {
       label: "Test",
       context: {},
       target: {},
-      do: [],
+      run: ["array", ["array", "emit", "ok"]],
     };
 
     const targets = findActionTargets(action, graph, packStore, a.id);
