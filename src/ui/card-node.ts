@@ -234,6 +234,20 @@ export function updateCardElement(
     el.textContent = "";
     if (badge) el.appendChild(badge);
     el.appendChild(document.createTextNode(card.text || "(empty)"));
+
+    // Render field tags
+    const fields = card.fields;
+    if (fields && Object.keys(fields).length > 0) {
+      const fieldRow = document.createElement("div");
+      fieldRow.className = "card-fields";
+      for (const [key, value] of Object.entries(fields)) {
+        const tag = document.createElement("span");
+        tag.className = "card-field-tag";
+        tag.textContent = value === true ? key : `${key}=${String(value)}`;
+        fieldRow.appendChild(tag);
+      }
+      el.appendChild(fieldRow);
+    }
   }
 
   el.classList.toggle("current", isCurrent);

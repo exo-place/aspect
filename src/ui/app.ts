@@ -63,6 +63,7 @@ export class App {
   private snapGhosts: SVGLineElement[] = [];
   private dragPeers: Map<string, { x: number; y: number }> | null = null;
   private dragPrimaryOrigin: { x: number; y: number } | null = null;
+  private combineHoverTarget: HTMLElement | null = null;
   private liveRegion: HTMLDivElement;
   private packInfoPanel: PackInfoPanel;
   private mode: TabMode = "projection";
@@ -331,7 +332,7 @@ export class App {
           this.dragPrimaryOrigin = null;
         }
       },
-      onDrag: (_cardId, worldX, worldY) => {
+      onDrag: (cardId, worldX, worldY) => {
         if (this.dragPeers && this.dragPrimaryOrigin) {
           const dx = worldX - this.dragPrimaryOrigin.x;
           const dy = worldY - this.dragPrimaryOrigin.y;
@@ -344,6 +345,7 @@ export class App {
           }
         }
         this.renderEdges();
+        this.updateCombineHover(cardId);
       },
       onDragEnd: (cardId) => {
         this.history.capture();
@@ -368,6 +370,7 @@ export class App {
           this.dragPeers = null;
         }
         this.dragPrimaryOrigin = null;
+        this.clearCombineHover();
 
         // Check for drag-to-combine: did the dropped card land on another card?
         if (el) {
@@ -1264,6 +1267,36 @@ export class App {
         cancel();
       }
     });
+  }
+
+  private updateCombineHover(dragCardId: string): void {
+    const el = this.cardElements.get(dragCardId);
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const cx = rect.left + rect.width / 2;
+    const cy = rect.top + rect.height / 2;
+    const hit = document.elementsFromPoint(cx, cy)
+      .find((e) => e instanceof HTMLElement && e.dataset.cardId && e.dataset.cardId !== dragCardId);
+    const hitEl = hit instanceof HTMLElement ? hit : null;
+    const hitId = hitEl?.dataset.cardId ?? null;
+
+    if (hitId && hitEl) {
+      const hasCombine = findCombineActions(dragCardId, hitId, this.graph, this.packStore).length > 0;
+      if (hasCombine) {
+        if (this.combineHoverTarget !== hitEl) {
+          this.combineHoverTarget?.classList.remove("combine-target");
+          this.combineHoverTarget = hitEl;
+          hitEl.classList.add("combine-target");
+        }
+        return;
+      }
+    }
+    this.clearCombineHover();
+  }
+
+  private clearCombineHover(): void {
+    this.combineHoverTarget?.classList.remove("combine-target");
+    this.combineHoverTarget = null;
   }
 
   private executeCombineAction(actionId: string, targetCardId: string, cardAId: string, cardBId: string): void {

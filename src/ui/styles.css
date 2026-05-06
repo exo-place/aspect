@@ -159,6 +159,22 @@ html, body {
   pointer-events: none;
 }
 
+.card-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  margin-top: 4px;
+}
+
+.card-field-tag {
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: #333;
+  color: #aaa;
+  white-space: nowrap;
+}
+
 .card:hover {
   border-color: #555;
 }
@@ -893,6 +909,12 @@ html, body {
 .edge-type-picker-item.dimmed {
   color: #666;
   cursor: not-allowed;
+}
+
+/* Combine hover highlight */
+.card.combine-target {
+  outline: 2px solid #7c9cff;
+  outline-offset: 2px;
 }
 
 /* Combine picker */
