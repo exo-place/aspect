@@ -15,7 +15,6 @@ export const ALCHEMY_PACK: WorldPack = {
     { id: "steam",    label: "Steam",    style: { color: "#ccc",    icon: "♨️" }, fields: { hot: true, wet: true } },
     { id: "obsidian", label: "Obsidian", style: { color: "#1a1a2e", icon: "🔲" }, fields: { hard: true, sharp: true } },
     { id: "mud",      label: "Mud",      style: { color: "#8b5e3c", icon: "🟫" }, fields: { wet: true } },
-    { id: "wet-wood", label: "Wet Wood", style: { color: "#7a3e1e", icon: "🪵" }, fields: { wet: true } },
   ],
   edgeTypes: [],
   actions: [
@@ -93,7 +92,9 @@ export const ALCHEMY_PACK: WorldPack = {
       run: ["if",
         ["and", ["get", "contextFields", "flammable"], ["get", "targetFields", "wet"]],
         ["array",
-          ["array", "setKind", "context", "wet-wood"],
+          ["array", "removeField", "context", "flammable"],
+          ["array", "setField", "context", "wet", true],
+          ["array", "setText", "context", ["str", "Wet Wood"]],
         ],
         null,
       ],
