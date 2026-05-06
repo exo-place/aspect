@@ -11,9 +11,8 @@ export type ActionEffect =
   | { type: "removeEdge"; from: CardRef; to: CardRef; edgeType?: string }
   | { type: "setKind"; card: CardRef; kind: string | null }
   | { type: "setText"; card: CardRef; text: string }
+  | { type: "setField"; card: CardRef; key: string; value: unknown }
   | { type: "emit"; event: string; data?: Record<string, unknown> };
-
-export type JsonLogic = unknown;
 
 export interface ActionDef {
   id: string;
@@ -21,13 +20,13 @@ export interface ActionDef {
   description?: string;
   context: { kind?: string };
   target: ActionTargetDef;
-  when?: JsonLogic;
+  when?: unknown;
   do: ActionEffect[];
 }
 
 export interface ActionData {
-  context: { id: string; text: string; kind: string | null };
-  target: { id: string; text: string; kind: string | null };
+  context: { id: string; text: string; kind: string | null; fields: Record<string, unknown> };
+  target: { id: string; text: string; kind: string | null; fields: Record<string, unknown> };
   edgesFromContextToTarget: Array<{ type?: string; label?: string }>;
   edgesFromTargetToContext: Array<{ type?: string; label?: string }>;
   contextEdgesFrom: Array<{ to: string; toKind?: string; type?: string }>;

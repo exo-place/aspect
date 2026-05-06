@@ -9,6 +9,7 @@ export interface Card {
   position: Position;
   kind?: string;
   width?: number;
+  fields?: Record<string, unknown>;
 }
 
 export interface Edge {

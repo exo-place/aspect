@@ -72,6 +72,28 @@ export class CardGraph {
     });
   }
 
+  setField(id: string, key: string, value: unknown): void {
+    const yCard = this.cards.get(id);
+    if (!yCard) throw new Error(`Card not found: ${id}`);
+    this.doc.transact(() => {
+      let fields = yCard.get("fields") as Y.Map<unknown> | undefined;
+      if (!fields) {
+        fields = new Y.Map<unknown>();
+        yCard.set("fields", fields);
+      }
+      fields.set(key, value);
+    });
+  }
+
+  deleteField(id: string, key: string): void {
+    const yCard = this.cards.get(id);
+    if (!yCard) throw new Error(`Card not found: ${id}`);
+    this.doc.transact(() => {
+      const fields = yCard.get("fields") as Y.Map<unknown> | undefined;
+      fields?.delete(key);
+    });
+  }
+
   setKind(id: string, kind: string | null): void {
     const yCard = this.cards.get(id);
     if (!yCard) throw new Error(`Card not found: ${id}`);
@@ -298,6 +320,13 @@ export class CardGraph {
         yCard.set("y", card.position.y);
         if (card.kind !== undefined) yCard.set("kind", card.kind);
         if (card.width !== undefined) yCard.set("width", card.width);
+        if (card.fields !== undefined) {
+          const yFields = new Y.Map<unknown>();
+          for (const [k, v] of Object.entries(card.fields)) {
+            yFields.set(k, v);
+          }
+          yCard.set("fields", yFields);
+        }
         this.cards.set(id, yCard);
       }
       for (const [id, edge] of Object.entries(data.edges)) {
@@ -326,6 +355,14 @@ export class CardGraph {
     const width = yCard.get("width");
     if (typeof width === "number") {
       (card as { width?: number }).width = width;
+    }
+    const yFields = yCard.get("fields");
+    if (yFields instanceof Y.Map) {
+      const fields: Record<string, unknown> = {};
+      for (const [k, v] of yFields as Y.Map<unknown>) {
+        fields[k] = v;
+      }
+      (card as { fields?: Record<string, unknown> }).fields = fields;
     }
     return card;
   }

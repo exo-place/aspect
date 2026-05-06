@@ -21,18 +21,10 @@ export const DEFAULT_PACK: WorldPack = {
       description: "Character picks up an item from a shared room",
       context: { kind: "character" },
       target: { kind: "item" },
-      when: {
-        and: [
-          { some: [
-            { var: "sharedNeighbors" },
-            { "===": [{ var: "kind" }, "room"] },
-          ] },
-          { none: [
-            { var: "edgesFromContextToTarget" },
-            { "===": [{ var: "type" }, "carries"] },
-          ] },
-        ],
-      },
+      when: ["and",
+        ["call", "any", "sharedNeighbors", ["fn", ["n"], ["==", ["get", "n", "kind"], "room"]]],
+        ["not", ["call", "any", "edgesFromContextToTarget", ["fn", ["e"], ["==", ["get", "e", "type"], "carries"]]]],
+      ],
       do: [
         { type: "addEdge", from: "context", to: "target", edgeType: "carries" },
         { type: "emit", event: "picked-up" },

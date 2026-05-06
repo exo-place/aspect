@@ -3,7 +3,66 @@ import type { WorldPackStore } from "./pack";
 import type { EventLog } from "./event-log";
 import type { ActionDef, ActionData, ActionResult, ActionEvent, CardRef } from "./action-types";
 import type { Edge } from "./types";
-import { apply } from "./json-logic";
+import { compile, CompileError } from "@dusklight/marinada";
+import type { Expr } from "@dusklight/marinada";
+
+const compiledPredicates = new Map<string, (env: Record<string, unknown>) => unknown>();
+
+// Bare strings in Marinada are variable references, not literals. To write string
+// values in predicates, the strings must exist in the env. We populate the env with
+// common field names and all pack kind/edge-type IDs as self-referential strings,
+// so pack authors can write e.g. ["===", ["get", "context", "kind"], "room"].
+function buildPredicateEnv(data: ActionData, packStore: WorldPackStore): Record<string, unknown> {
+  const env: Record<string, unknown> = {
+    // Common field name strings for use as record keys
+    id: "id", kind: "kind", text: "text", fields: "fields",
+    from: "from", to: "to", type: "type", label: "label",
+    // Collection helpers (native JS functions callable via ["call", "any", arr, pred])
+    any: (arr: unknown[], pred: (x: unknown) => unknown) => (arr as unknown[]).some(x => !!pred(x)),
+    every: (arr: unknown[], pred: (x: unknown) => unknown) => (arr as unknown[]).every(x => !!pred(x)),
+    none: (arr: unknown[], pred: (x: unknown) => unknown) => !(arr as unknown[]).some(x => !!pred(x)),
+    filter: (arr: unknown[], pred: (x: unknown) => unknown) => (arr as unknown[]).filter(x => !!pred(x)),
+    count: (arr: unknown[]) => (arr as unknown[]).length,
+    // ActionData
+    context: data.context,
+    target: data.target,
+    contextKind: data.context.kind,
+    targetKind: data.target.kind,
+    contextText: data.context.text,
+    targetText: data.target.text,
+    contextId: data.context.id,
+    targetId: data.target.id,
+    contextFields: data.context.fields,
+    targetFields: data.target.fields,
+    edgesFromContextToTarget: data.edgesFromContextToTarget,
+    edgesFromTargetToContext: data.edgesFromTargetToContext,
+    contextEdgesFrom: data.contextEdgesFrom,
+    contextEdgesTo: data.contextEdgesTo,
+    targetEdgesFrom: data.targetEdgesFrom,
+    targetEdgesTo: data.targetEdgesTo,
+    sharedNeighbors: data.sharedNeighbors,
+  };
+  const pack = packStore.get();
+  if (pack) {
+    for (const kind of pack.kinds) env[kind.id] = kind.id;
+    for (const et of pack.edgeTypes) env[et.id] = et.id;
+  }
+  return env;
+}
+
+function evaluatePredicate(actionId: string, when: unknown, data: ActionData, packStore: WorldPackStore): boolean {
+  try {
+    let fn = compiledPredicates.get(actionId);
+    if (!fn) {
+      fn = compile(when as Expr);
+      compiledPredicates.set(actionId, fn);
+    }
+    return !!fn(buildPredicateEnv(data, packStore));
+  } catch (e) {
+    if (e instanceof CompileError) compiledPredicates.delete(actionId);
+    return false;
+  }
+}
 
 export interface EdgeIndex {
   from: Map<string, Edge[]>;
@@ -172,8 +231,8 @@ export function buildActionData(
   }
 
   return {
-    context: { id: contextId, text: contextCard.text, kind: contextCard.kind ?? null },
-    target: { id: targetId, text: targetCard.text, kind: targetCard.kind ?? null },
+    context: { id: contextId, text: contextCard.text, kind: contextCard.kind ?? null, fields: contextCard.fields ?? {} },
+    target: { id: targetId, text: targetCard.text, kind: targetCard.kind ?? null, fields: targetCard.fields ?? {} },
     edgesFromContextToTarget,
     edgesFromTargetToContext,
     contextEdgesFrom,
@@ -216,16 +275,10 @@ export function isActionAvailable(
     if (!hasEdge) return false;
   }
 
-  // JSONLogic predicate
   if (action.when !== undefined) {
     const data = buildActionData(graph, contextId, targetId, edgeIndex);
     if (!data) return false;
-    try {
-      const result = apply(action.when, data as unknown as Record<string, unknown>);
-      if (!result) return false;
-    } catch {
-      return false;
-    }
+    if (!evaluatePredicate(action.id, action.when, data, packStore)) return false;
   }
 
   return true;
@@ -296,6 +349,11 @@ export function executeAction(
         case "setText": {
           const cardId = resolveCardId(effect.card);
           graph.updateCard(cardId, { text: effect.text });
+          break;
+        }
+        case "setField": {
+          const cardId = resolveCardId(effect.card);
+          graph.setField(cardId, effect.key, effect.value);
           break;
         }
         case "emit": {

@@ -203,7 +203,7 @@ describe("isActionAvailable", () => {
       label: "Test",
       context: {},
       target: {},
-      when: { "===": [{ var: "context.kind" }, "room"] },
+      when: ["==", ["get", "context", "kind"], "room"],
       do: [],
     };
     expect(isActionAvailable(actionTrue, graph, packStore, a.id, b.id)).toBe(true);
@@ -213,7 +213,7 @@ describe("isActionAvailable", () => {
       label: "Test",
       context: {},
       target: {},
-      when: { "===": [{ var: "context.kind" }, "item"] },
+      when: ["==", ["get", "context", "kind"], "item"],
       do: [],
     };
     expect(isActionAvailable(actionFalse, graph, packStore, a.id, b.id)).toBe(false);
