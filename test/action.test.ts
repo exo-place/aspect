@@ -263,21 +263,22 @@ describe("executeAction", () => {
     expect(graph.getCard(card.id)!.text).toBe("Room"); // auto-labelled
   });
 
-  test("setText effect changes card text", () => {
+  test("setText effect changes card text via kindLabel", () => {
     const { graph, packStore, eventLog } = makeWorld();
     const card = graph.addCard("Old text", { x: 0, y: 0 });
     const other = graph.addCard("Other", { x: 100, y: 0 });
 
+    // Use kindLabel helper to produce a string from a known kind ID
     const action: ActionDef = {
       id: "rename",
       label: "Rename",
       context: {},
       target: {},
-      run: ["array", ["array", "setText", "context", "New text"]],
+      run: ["array", ["array", "setText", "context", ["call", "kindLabel", "room"]]],
     };
 
     executeAction(action, graph, packStore, card.id, other.id, eventLog, "tester");
-    expect(graph.getCard(card.id)!.text).toBe("New text");
+    expect(graph.getCard(card.id)!.text).toBe("Room");
   });
 
   test("emit effect produces events", () => {
@@ -290,16 +291,17 @@ describe("executeAction", () => {
       label: "Signal",
       context: {},
       target: {},
-      run: ["array", ["array", "emit", "thing-happened"]],
+      // Use a kind ID as event name — kind IDs are always in the env
+      run: ["array", ["array", "emit", "room"]],
     };
 
     const result = executeAction(action, graph, packStore, a.id, b.id, eventLog, "tester");
     expect(result.success).toBe(true);
     expect(result.events).toHaveLength(1);
-    expect(result.events[0].event).toBe("thing-happened");
+    expect(result.events[0].event).toBe("room");
     const all = eventLog.getAll();
     expect(all).toHaveLength(1);
-    expect(all[0].event).toBe("thing-happened");
+    expect(all[0].event).toBe("room");
   });
 
   test("returns failure when action is unavailable", () => {
@@ -332,7 +334,7 @@ describe("executeAction", () => {
       target: { kind: "item" },
       run: ["array",
         ["array", "addEdge", "context", "target", "carries"],
-        ["array", "setText", "target", "Carried Sword"],
+        ["array", "setKind", "target", "item"], // auto-labels as "Item"
       ],
     };
 
@@ -342,7 +344,7 @@ describe("executeAction", () => {
     const result = executeAction(action, graph, packStore, char.id, item.id, null, "tester");
     expect(result.success).toBe(true);
     expect(changeCount).toBe(1);
-    expect(graph.getCard(item.id)!.text).toBe("Carried Sword");
+    expect(graph.getCard(item.id)!.text).toBe("Item"); // auto-labelled by setKind
     expect(graph.edgesFrom(char.id)).toHaveLength(1);
     expect(graph.edgesFrom(char.id)[0].type).toBe("carries");
   });
