@@ -94,6 +94,24 @@ Connect actions to projection. The world shows you what you can do.
 - [x] **Action execution UI** — `executeAffordance()` in `src/ui/app.ts` wires click → `executeAction()` → graph change → reactive re-render
 - [x] **Affordance tests** — 11 tests in `test/affordance.test.ts` covering empty states, kind filtering, pick-up/drop cycle, multi-target, full lifecycle
 
+## Phase 5: synergy mechanic — open
+
+*Starting context, not instructions — verify before acting.*
+
+Built and unit-tested but not yet exercised in the browser:
+- Alchemy demo pack (`src/alchemy-pack.ts`) — 8 reactions across 8 material kinds with field-based predicates
+- Drag-to-combine gesture with hover highlight (`src/ui/app.ts` `updateCombineHover`)
+- Field display on cards (`src/ui/card-node.ts`)
+- `run`-based action system — single Marinada expression returns effect tuples or null
+
+**Open threads:**
+
+- [ ] **Browser test the alchemy pack** — load it, drag Wood onto Fire, confirm Ash card with the right fields. Same for the other 7 reactions. Unit tests pass but the UI integration hasn't been driven end-to-end.
+- [ ] **Pack switching UX** — only one pack loads at a time, switching requires Import Pack → JSON. A built-in pack picker or dev shortcut would help iteration.
+- [ ] **More synergy content** — current alchemy is 8 reactions across 4 base elements. Real "Little Alchemy" feel needs more depth. Probably wait until pack iteration is easier (above).
+- [ ] **Action syntax cleanup** — pack authors write `["call", "setKind", "context", "ash"]`. Could become `["setKind", "context", "ash"]` if Marinada adds module-level op declarations (see marinada TODO). Don't pursue env-op-fallthrough — `with`-style ambiguity.
+- [ ] **`createCard` effect needs a real demo** — exists but no alchemy reaction uses it. The "consume both, produce one new" pattern hasn't been exercised.
+
 ## Tech debt and infrastructure
 
 - [x] **Server persistence** — server-side Y.Doc persistence via SQLite (`src/server/persist.ts`, `src/server/debounce.ts`)
