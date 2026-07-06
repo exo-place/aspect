@@ -21,7 +21,7 @@
     },
   },
   "packages": {
-    "@dusklight/marinada": ["@dusklight/marinada@github:rhi-zone/marinada#ba34e2f", { "dependencies": { "@rhi-zone/rainbow": "0.2.0-alpha.1" } }, "rhi-zone-marinada-ba34e2f"],
+    "@dusklight/marinada": ["@dusklight/marinada@github:rhi-zone/marinada#698317a", { "dependencies": { "@rhi-zone/rainbow": "0.2.0-alpha.1" } }, "rhi-zone-marinada-698317a", "sha512-DyAzf7rQnYcSTvsCQFk/8O4gjOsZCCnKI6A2dsEH337TdsSqP/l67XyZwO//Muq12aOwzvtfblHtHFWVH4vhxA=="],
 
     "@oxlint/darwin-arm64": ["@oxlint/darwin-arm64@1.42.0", "", { "os": "darwin", "cpu": "arm64" }, "sha512-ui5CdAcDsXPQwZQEXOOSWsilJWhgj9jqHCvYBm2tDE8zfwZZuF9q58+hGKH1x5y0SV4sRlyobB2Quq6uU6EgeA=="],
 
