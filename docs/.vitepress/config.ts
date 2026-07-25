@@ -1,9 +1,11 @@
 import { defineConfig } from 'vitepress'
+import { withMermaid } from 'vitepress-plugin-mermaid'
 
-export default defineConfig({
-  title: 'Aspect',
+export default withMermaid(defineConfig({
+  title: 'aspect',
   description: 'Card-based identity exploration sandbox',
   base: '/aspect/',
+  srcExclude: ['**/CLAUDE.md'],
 
   themeConfig: {
     nav: [
@@ -11,7 +13,7 @@ export default defineConfig({
       { text: 'Guide', link: '/guide/' },
       { text: 'Design', link: '/design/architecture' },
       { text: 'Reference', link: '/reference/' },
-      { text: 'exo', link: 'https://exo-place.github.io/' },
+      { text: 'exo', link: 'https://docs.exo.place/' },
     ],
 
     sidebar: [
@@ -57,4 +59,4 @@ export default defineConfig({
       message: 'Released under the MIT License.',
     }
   }
-})
+}))
