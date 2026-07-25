@@ -168,6 +168,43 @@ Production mode: `NODE_ENV=production bun run start` serves from `dist/` with ca
 - **Do the work properly.** No undocumented workarounds.
 - **Update docs after every task.** Keep docs/, README.md, and CLAUDE.md in sync.
 
+**Conversation is not memory.** Anything said in chat evaporates at session end. If it implies future behavior change, write it to CLAUDE.md or a memory file immediately — or it will not happen.
+
+**Warning — these phrases mean something needs to be written down right now:**
+- "I won't do X again" / "I'll remember to..." / "I've learned that..."
+- "Next time I'll..." / "From now on I'll..."
+- Any acknowledgement of a recurring error without a corresponding CLAUDE.md or memory edit
+
+**When the user corrects you:** Ask what rule would have prevented this, and write it before proceeding. **"The rule exists, I just didn't follow it" is never the diagnosis** — a rule that doesn't prevent the failure it describes is incomplete; fix the rule, not your behavior.
+
+**Something unexpected is a signal, not noise.** Surprising output, anomalous numbers, files containing what they shouldn't — stop and ask why before continuing. Don't accept anomalies and move on.
+
+**Always commit completed work.** After tests pass, commit immediately — don't wait to be asked. When a plan has multiple phases, commit after each phase passes. Uncommitted work is lost work.
+
+## Context Management
+
+**Use subagents to protect the main context window.** For broad exploration or mechanical multi-file work, delegate to an Explore or general-purpose subagent rather than running searches inline. The subagent returns a distilled summary; raw tool output stays out of the main context.
+
+Rules of thumb:
+- Research tasks (investigating a question, surveying patterns) → subagent; don't pollute main context with exploratory noise
+- Searching >5 files or running >3 rounds of grep/read → use a subagent
+- Codebase-wide analysis (architecture, patterns, cross-file survey) → always subagent
+- Mechanical work across many files (applying the same change everywhere) → parallel subagents
+- Single targeted lookup (one file, one symbol) → inline is fine
+
+## Session Handoff
+
+Use plan mode as a handoff mechanism when:
+- A task is fully complete (committed, pushed, docs updated)
+- The session has drifted from its original purpose
+- Context has accumulated enough that a fresh start would help
+
+**For handoffs:** enter plan mode, write a short plan pointing at TODO.md, and ExitPlanMode. **Do NOT investigate first** — the session is context-heavy and about to be discarded. The fresh session investigates after approval.
+
+**For mid-session planning** on a different topic: investigating inside plan mode is fine — context isn't being thrown away.
+
+Before the handoff plan, update TODO.md and memory files with anything worth preserving.
+
 ## Commit Convention
 
 Use conventional commits: `type(scope): message`
@@ -181,5 +218,6 @@ Before committing: `bun run lint && bun run check:types && bun run test` must pa
 Do not:
 - Announce actions ("I will now...") - just do them
 - Leave work uncommitted
+- Use interactive git commands (`git add -p`, `git add -i`, `git rebase -i`) — these block on stdin and hang in non-interactive shells; stage files by name instead
 - Use `--no-verify` - fix the issue or fix the hook
 - Assume tools are missing - check if `bun` is available
