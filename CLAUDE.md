@@ -192,19 +192,6 @@ Rules of thumb:
 - Mechanical work across many files (applying the same change everywhere) → parallel subagents
 - Single targeted lookup (one file, one symbol) → inline is fine
 
-## Session Handoff
-
-Use plan mode as a handoff mechanism when:
-- A task is fully complete (committed, pushed, docs updated)
-- The session has drifted from its original purpose
-- Context has accumulated enough that a fresh start would help
-
-**For handoffs:** enter plan mode, write a short plan pointing at TODO.md, and ExitPlanMode. **Do NOT investigate first** — the session is context-heavy and about to be discarded. The fresh session investigates after approval.
-
-**For mid-session planning** on a different topic: investigating inside plan mode is fine — context isn't being thrown away.
-
-Before the handoff plan, update TODO.md and memory files with anything worth preserving.
-
 ## Commit Convention
 
 Use conventional commits: `type(scope): message`
